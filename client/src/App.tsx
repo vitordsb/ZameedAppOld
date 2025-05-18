@@ -51,11 +51,7 @@ function Router() {
 
 function App() {
   const [location] = useLocation();
-
-  // Determine if current route should use the landing layout
   const isLandingPage = LANDING_ROUTES.includes(location);
-
-  // Select the appropriate layout based on the current route
   const Layout = isLandingPage ? LandingLayout : ApplicationLayout;
 
   return (

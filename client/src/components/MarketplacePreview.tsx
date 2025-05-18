@@ -9,9 +9,9 @@ const MarketplacePreview = () => {
         <p className="text-xl mb-10 max-w-3xl mx-auto">Join thousands of clients who have found their perfect design match through our marketplace.</p>
         <Link href="/marketplace">
           <Button 
-            className="bg-primary text-white px-8 py-6 rounded-full text-lg font-semibold hover:bg-opacity-90 transition-all inline-block"
+            className="bg-primary text-white px-8 py-6 rounded-full text-lg font-semibold hover:bg-opacity-90 transition-all flex "
           >
-            Explore the Marketplace
+            Conheça a plataforma!
           </Button>
         </Link>
       </div>

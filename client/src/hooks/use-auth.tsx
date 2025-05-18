@@ -8,8 +8,6 @@ import { User, insertUserSchema } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
-
-// Re-export the AuthContext types from the old context for compatibility
 export interface OldAuthContextType {
   user: User | null;
   isLoading: boolean;
@@ -17,21 +15,16 @@ export interface OldAuthContextType {
   logout: () => Promise<void>;
   refetchUser: () => Promise<void>;
 }
-
-// Define the login schema for frontend validation
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
 });
-
-// Define the register schema for frontend validation
 const registerSchema = insertUserSchema.extend({
   confirmPassword: z.string().min(6, "Please confirm your password"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
 });
-
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;

@@ -29,8 +29,8 @@ const Navbar = () => {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
-
   // Handle navbar transparency on scroll
+
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
