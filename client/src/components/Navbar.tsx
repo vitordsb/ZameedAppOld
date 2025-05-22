@@ -29,7 +29,6 @@ const Navbar = () => {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
-  // Handle navbar transparency on scroll
 
   useEffect(() => {
     const handleScroll = () => {
@@ -40,7 +39,6 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
   
-  // Fetch unread message count when user is logged in
   useEffect(() => {
     if (isLoggedIn && user) {
       const fetchUnreadCount = async () => {
@@ -57,38 +55,31 @@ const Navbar = () => {
       
       fetchUnreadCount();
       
-      // Poll for new messages every 30 seconds
       const interval = setInterval(fetchUnreadCount, 30000);
       return () => clearInterval(interval);
     }
   }, [isLoggedIn, user]);
   
-  // Handle authentication
   const handleLoginClick = () => {
     navigate("/auth");
   };
   
   const handleLogout = async () => {
     await logout();
-    // After logout, stay on the same page
+    navigate("/");
   };
 
-  // Determine navbar style based on location and scroll state
   const isHomePage = location === "/";
   const isMarketplace = location.startsWith("/home");
   
-  // Apply transparent navbar for homepage when not scrolled
   const navClass = (isHomePage && !isScrolled) 
     ? "bg-transparent" 
     : "bg-white bg-opacity-95 shadow-md";
 
-  // Handler for the search functionality
   const handleSearch = (searchParams: { query: string, location: string, service: string }) => {
     console.log("Searching for:", searchParams);
-    // This would typically dispatch an action or update state in a real app
   };
 
-  // Auth button or user dropdown
   const renderAuthSection = () => {
     if (isLoggedIn && user) {
       return (
@@ -173,18 +164,17 @@ const Navbar = () => {
     );
   };
 
-  // LANDING PAGE NAVBAR - Used on the homepage
   const renderLandingDesktopNav = () => {
     return (
       <div className="hidden md:flex items-center space-x-8">
-        <Link href="/#how-it-works">
-          <span className="text-gray-800 hover:text-primary transition-colors cursor-pointer">How It Works</span>
+        <Link href="#how-it-works">
+          <span className="text-white hover:text-primary transition-colors cursor-pointer">How It Works</span>
         </Link>
-        <Link href="/#benefits">
-          <span className="text-gray-800 hover:text-primary transition-colors cursor-pointer">Benefits</span>
+        <Link href="#benefits">
+          <span className="text-white hover:text-primary transition-colors cursor-pointer">Benefits</span>
         </Link>
-        <Link href="/#testimonials">
-          <span className="text-gray-800 hover:text-primary transition-colors cursor-pointer">Testimonials</span>
+        <Link href="#testimonials">
+          <span className="text-white hover:text-primary transition-colors cursor-pointer">Testimonials</span>
         </Link>
         <Link href="/marketplace">
           <Button className="bg-primary text-white px-6 py-2 rounded-full hover:bg-opacity-90 transition-all font-semibold">
@@ -199,7 +189,6 @@ const Navbar = () => {
     );
   };
 
-  // LANDING PAGE MOBILE MENU
   const renderLandingMobileNav = () => {
     return (
       <div className="flex flex-col space-y-4 mt-8">
@@ -229,7 +218,6 @@ const Navbar = () => {
     );
   };
 
-  // APPLICATION NAVBAR - Used on marketplace and other app pages
   const renderApplicationDesktopNav = () => {
     return (
       <div className="hidden md:flex items-center justify-end space-x-6">
@@ -356,14 +344,12 @@ const Navbar = () => {
     );
   };
 
-  // Decide which desktop navigation to render based on the current page
   const renderDesktopNavItems = () => {
     return isHomePage 
       ? renderLandingDesktopNav() 
       : renderApplicationDesktopNav();
   };
 
-  // Decide which mobile navigation to render based on the current page
   const renderMobileNavItems = () => {
     return isHomePage 
       ? renderLandingMobileNav() 
@@ -374,11 +360,11 @@ const Navbar = () => {
     <nav className={`fixed w-full z-50 transition-all duration-300 ${navClass}`}>
       <div className="container mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
-          {/* Logo - common to both navbar types */}
           <div className="flex items-center">
             <Link href="/">
               <div className="flex items-center justify-center bg-primary text-white rounded-md w-8 h-8 font-bold text-lg">
-                Z
+              <img src="/images/logo.png" alt=""/>
+                ZameedApp
               </div>
             </Link>
           </div>

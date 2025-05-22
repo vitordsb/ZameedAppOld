@@ -5,24 +5,18 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 
 export default function AuthPage() {
-  // State for controlling modal visibility
-  const [isLoginOpen, setIsLoginOpen] = useState(true);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   
-  // Auth hook
   const { isLoggedIn } = useAuth();
   
-  // Router
   const [location, navigate] = useLocation();
   
-  // Redirect to home if already logged in
   useEffect(() => {
     if (isLoggedIn) {
       navigate("/");
     }
   }, [isLoggedIn, navigate]);
-
-  // Toggle between login and register views
   const handleSwitchToRegister = () => {
     setIsLoginOpen(false);
     setIsRegisterOpen(true);
@@ -33,20 +27,18 @@ export default function AuthPage() {
     setIsLoginOpen(true);
   };
 
-  // Handle successful auth
   const handleAuthSuccess = () => {
     navigate("/");
   };
 
   return (
     <div className="flex min-h-screen">
-      {/* Left side - Auth Form */}
       <div className="w-full lg:w-1/2 p-8 flex flex-col justify-center items-center bg-white">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
-            <h1 className="text-4xl font-bold mb-2">Welcome to Z</h1>
+            <h1 className="text-4xl font-bold mb-2">Bem vindo à ZameedApp!</h1>
             <p className="text-gray-600 mb-8">
-              Connect with interior designers and discover amazing designs
+              Por favor, faça login ou crie uma conta para continuar.
             </p>
           </div>
 
@@ -56,7 +48,7 @@ export default function AuthPage() {
               className="w-full" 
               size="lg"
             >
-              Login
+            Entrar
             </Button>
             <Button 
               onClick={() => setIsRegisterOpen(true)} 
@@ -64,21 +56,20 @@ export default function AuthPage() {
               className="w-full" 
               size="lg"
             >
-              Create Account
+            Criar conta
             </Button>
             <div className="text-center mt-4">
               <Button 
                 variant="link" 
                 onClick={() => navigate("/")}
               >
-                Continue as Guest
+              Quero testar sem conta!
               </Button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Right side - Hero/Showcase */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-tr from-primary to-primary/50 items-center justify-center">
         <div className="max-w-md p-8 text-white">
           <h2 className="text-3xl font-bold mb-6">Discover Interior Design Excellence</h2>
@@ -105,7 +96,6 @@ export default function AuthPage() {
         </div>
       </div>
 
-      {/* Auth modals */}
       <AuthModals
         isLoginOpen={isLoginOpen}
         isRegisterOpen={isRegisterOpen}

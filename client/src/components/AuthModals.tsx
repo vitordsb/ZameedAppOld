@@ -157,9 +157,9 @@ export const AuthModals = ({
       <Dialog open={isLoginOpen} onOpenChange={onLoginClose}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle className="text-2xl">Login</DialogTitle>
+            <DialogTitle className="text-2xl">Login para ZameedApp</DialogTitle>
             <DialogDescription>
-              Sign in to your account to like posts and add comments
+            Preencha as informações abaixo para fazer o login
             </DialogDescription>
           </DialogHeader>
           
@@ -172,7 +172,7 @@ export const AuthModals = ({
                   <FormItem>
                     <FormLabel>Username</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your username" {...field} />
+                      <Input placeholder="Insira seu nome" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -186,7 +186,7 @@ export const AuthModals = ({
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="Enter your password" {...field} />
+                      <Input type="password" placeholder="Coloque sua senha" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
