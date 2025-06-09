@@ -75,7 +75,7 @@ const DesignerProfile = () => {
             </p>
             <Button
               className="bg-amber-600 hover:bg-amber-700 text-white rounded-lg px-6 py-3"
-              onClick={() => navigate("/socialFeed")}
+              onClick={() => navigate("/home")}
             >
               Voltar ao Marketplace
             </Button>
@@ -109,7 +109,7 @@ const DesignerProfile = () => {
           transition={{ duration: 0.5 }}
           className="bg-white rounded-2xl shadow-xl overflow-hidden mb-8"
         >
-          <div className="relative h-40 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center justify-center">
+          <div className="relative h-48 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center justify-center">
             <img 
               src={designer.coverImage || "https://via.placeholder.com/1200x300?text=Capa+do+Perfil"}
               alt="Cover Image"
@@ -125,9 +125,9 @@ const DesignerProfile = () => {
               <AvatarImage src={designer.profileImage} alt={designer.name} />
               <AvatarFallback className="bg-amber-500 text-white text-4xl font-bold">{designer.name.charAt(0)}</AvatarFallback>
             </Avatar>
-            <div className="mt-4 sm:mt-16 sm:ml-8 text-center sm:text-left flex-grow">
+            <div className="mt-4 sm:mt-0 sm:ml-8 text-center sm:text-left flex-grow">
               <h2 className="text-3xl font-bold text-gray-900">{designer.name}</h2>
-              <p className="text-amber-600 text-lg font-medium">{designer.style || "Arquitetura Moderna"}</p>
+              <p className="text-blue-600 text-lg font-medium">{designer.style || "Arquitetura Moderna"}</p>
               <div className="flex items-center justify-center sm:justify-start mt-2">
                 <StarRating rating={designer.rating} />
                 <span className="ml-2 text-gray-600 text-sm">({designer.reviewCount} avaliações)</span>
@@ -241,15 +241,15 @@ const DesignerProfile = () => {
                     <div key={info.type} className="flex items-center gap-3 text-gray-700">
                       {info.icon}
                       {info.type === "email" ? (
-                        <a href={`mailto:${info.value}`} className="hover:text-amber-600 transition-colors">
+                        <a href={`mailto:${info.value}`} className="hover:text-blue-600 transition-colors">
                           {info.value}
                         </a>
                       ) : info.type === "phone" ? (
-                        <a href={`tel:${info.value}`} className="hover:text-amber-600 transition-colors">
+                        <a href={`tel:${info.value}`} className="hover:text-blue-600 transition-colors">
                           {info.value}
                         </a>
                       ) : (
-                        <a href={info.value} target="_blank" rel="noopener noreferrer" className="hover:text-amber-600 transition-colors">
+                        <a href={info.value} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">
                           {info.value}
                         </a>
                       )}

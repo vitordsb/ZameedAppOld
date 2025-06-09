@@ -13,7 +13,7 @@ export function useGuestLogin() {
         
         if (!res.ok) {
           const errorData = await res.json();
-          throw new Error(errorData.message || "Failed to login as guest");
+          throw new Error(errorData.message || "Não foi possível logar como visitante. Por favor, tente novamente.");
         }
         
         const data = await res.json();
@@ -28,15 +28,15 @@ export function useGuestLogin() {
       queryClient.setQueryData(["/api/auth/me"], user);
       
       toast({
-        title: "Welcome, Guest!",
-        description: "You are now logged in as a guest user.",
+        title: "Bem vindo, visitante!",
+        description: "Você está logado como visitante.",
       });
     },
     onError: (error: any) => {
       console.error("Guest login error:", error);
       toast({
         title: "Login Failed",
-        description: error.message || "Unable to log in as guest. Please try again.",
+        description: error.message || "Poxa, houve um erro ao logar como visitante. Por favor, tente novamente.",
         variant: "destructive",
       });
     },

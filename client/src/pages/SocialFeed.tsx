@@ -1,344 +1,487 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Designer } from "@shared/schema";
-import { MapPin, Search } from "lucide-react";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Star, 
+  Search, 
+  MapPin, 
+  Briefcase, 
+  Award, 
+  Filter,
+  MessageCircle,
+  Users,
+  TrendingUp,
+  Shield,
+  Zap,
+  CheckCircle
+} from "lucide-react";
+import { motion } from "framer-motion";
 import { Link } from "wouter";
 import ApplicationLayout from "@/components/layouts/ApplicationLayout";
-import NewsCarousel from "@/components/NewsCarousel";
-import { useAuth } from "@/hooks/use-auth";
 
-// Available services
-const serviceOptions = [
-  "Interior Design",
-  "Custom Furniture",
-  "Space Planning",
-  "3D Rendering",
-  "Lighting Design",
-  "Color Consultation",
-  "Home Staging",
-  "Commercial Design"
+const locations = [
+  { label: "São Paulo", value: "sao-paulo" },
+  { label: "Rio de Janeiro", value: "rio-de-janeiro" },
+  { label: "Belo Horizonte", value: "belo-horizonte" },
+  { label: "Curitiba", value: "curitiba" },
+  { label: "Porto Alegre", value: "porto-alegre" },
 ];
 
-const SocialFeed = () => {
-  const { user } = useAuth();
-  const [designerSearchQuery, setDesignerSearchQuery] = useState("");
-  const [selectedService, setSelectedService] = useState<string | null>(null);
+const servicesList = [
+  "Design de Interiores",
+  "Renderização 3D",
+  "Planejamento de Espaço",
+  "Consultoria de Cores",
+  "Design Comercial",
+];
 
-  // Fetch designers data
+export default function SaaSProfessionalDirectory() {
+  const [search, setSearch] = useState("");
+  const [location, setLocation] = useState("");
+  const [rating, setRating] = useState("");
+  const [service, setService] = useState("");
+
   const { data: designers = [] } = useQuery<Designer[]>({
     queryKey: ["/api/designers"],
   });
 
-  // Filter designers based on search and selected service
-  const filteredDesigners = designers.filter(designer => {
-    const matchesSearch = designerSearchQuery === "" || 
-      designer.name.toLowerCase().includes(designerSearchQuery.toLowerCase());
-    
-    const matchesService = !selectedService || 
-      (designer.services && designer.services.includes(selectedService));
-    
-    return matchesSearch && matchesService;
+  const filtered = designers.filter((d) => {
+    const matchesSearch = !search || d.name.toLowerCase().includes(search.toLowerCase());
+    const matchesLocation = !location || d.location?.toLowerCase() === location.toLowerCase();
+    const matchesService = !service || d.services?.includes(service);
+    const matchesRating = !rating || (d.rating && d.rating >= parseFloat(rating));
+    return matchesSearch && matchesLocation && matchesService && matchesRating;
   });
-
-  // Handle service selection
-  const handleServiceClick = (service: string) => {
-    setSelectedService(selectedService === service ? null : service);
-  };
 
   return (
     <ApplicationLayout>
-      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Main Content - 2/3 width */}
-          <div className="md:col-span-2 space-y-8">
-            {/* Designer Feed Section */}
-            <div>
-              <h2 className="text-lg font-semibold mb-3">Designer Feed</h2>
-              <Card className="shadow-sm">
-                <CardContent className="pt-5">
-                  <p className="text-sm text-gray-500 mb-3">
-                    Discover the latest from top interior designers
-                  </p>
-                  {/* Designer feed content here */}
-                  <div className="space-y-4">
-                    {/* This would be populated with actual feed items */}
-                    <p className="text-muted-foreground">
-                      Coming soon: Posts from your favorite designers will appear here.
-                    </p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-amber-50 to-indigo-50">
+        {/* Hero Section */}
+        <div className="bg-gradient-to-r from-amber-900 via-amber-800 to-amber-900 text-white">
+          <div className="max-w-7xl mx-auto px-6 py-16">
+            <div className="text-center">
+              <motion.h1 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="text-5xl md:text-6xl font-bold mb-6"
+              >
+                Encontre o <span className="text-amber-400">Arquiteto Ideal</span>
+                <br />para o Seu Projeto
+              </motion.h1>
+              <motion.p 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="text-xl md:text-2xl text-amber-100 mb-8 max-w-3xl mx-auto"
+              >
+                Conectamos você aos melhores talentos em arquitetura, de forma rápida e segura. 
+                Mais de 500+ profissionais verificados prontos para transformar suas ideias em realidade.
+              </motion.p>
+              
+              {/* Stats */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+                className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto"
+              >
+                <div className="text-center">
+                  <div className="flex items-center justify-center mb-2">
+                    <Users className="w-8 h-8 text-amber-400 mr-2" />
+                    <span className="text-3xl font-bold">500+</span>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Find Designers Section */}
-            <div>
-              <h2 className="text-lg font-semibold mb-3">Find Designers</h2>
-              <Card className="shadow-sm">
-                <CardContent className="pt-5 space-y-4">
-                  {/* Location Selector */}
-                  <div>
-                    <label className="block text-sm mb-2">Location</label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <Input 
-                        className="pl-10 pr-8" 
-                        placeholder="Select a location" 
-                      />
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M1 1L5 5L9 1" stroke="#6B7280" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </div>
-                    </div>
+                  <p className="text-amber-200">Arquitetos Verificados</p>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center justify-center mb-2">
+                    <TrendingUp className="w-8 h-8 text-amber-400 mr-2" />
+                    <span className="text-3xl font-bold">2.5k+</span>
                   </div>
-
-                  {/* Search Box */}
-                  <div>
-                    <label className="block text-sm mb-2">Search</label>
-                    <div className="flex">
-                      <div className="relative flex-grow">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                        <Input
-                          className="pl-10 rounded-r-none"
-                          placeholder="Find designers by name, specialty, style..."
-                          value={designerSearchQuery}
-                          onChange={(e) => setDesignerSearchQuery(e.target.value)}
-                        />
-                      </div>
-                      <Link href="/search">
-                        <Button type="button" className="bg-rose-500 hover:bg-rose-600 rounded-l-none h-10">
-                          <Search className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                    </div>
+                  <p className="text-amber-200">Projetos Concluídos</p>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center justify-center mb-2">
+                    <Shield className="w-8 h-8 text-amber-400 mr-2" />
+                    <span className="text-3xl font-bold">98%</span>
                   </div>
-
-                  {/* Service Selection */}
-                  <div>
-                    <label className="block text-sm mb-2">Service</label>
-                    <div className="flex flex-wrap gap-2">
-                      {serviceOptions.map(service => (
-                        <Badge
-                          key={service}
-                          variant={selectedService === service ? "default" : "outline"}
-                          className="cursor-pointer rounded-full px-3 py-1 text-xs"
-                          onClick={() => handleServiceClick(service)}
-                        >
-                          {service}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Suggestions */}
-                  <div className="mt-6">
-                    <h3 className="text-sm mb-3">Suggestions</h3>
-                    <div className="grid grid-cols-3 gap-4">
-                      {filteredDesigners.slice(0, 3).map(designer => (
-                        <Link key={designer.id} href={`/designer/${designer.id}`}>
-                          <div className="cursor-pointer transition-transform hover:scale-[1.02]">
-                            {/* Designer project image */}
-                            <div className="relative mb-2">
-                              {/* Sample project image - replace with actual designer project images */}
-                              <img 
-                                src={`https://source.unsplash.com/featured/600x400?interior,${designer.id}`}
-                                alt="Designer project" 
-                                className="w-full h-32 sm:h-40 object-cover rounded-lg"
-                              />
-                              {/* Designer profile image overlay */}
-                              <div className="absolute left-3 bottom-3">
-                                <div className="w-8 h-8 rounded-full border-2 border-white overflow-hidden bg-gray-200">
-                                  {designer.profileImage ? (
-                                    <img 
-                                      src={designer.profileImage} 
-                                      alt={designer.name} 
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-primary text-white font-medium text-xs">
-                                      {designer.name.charAt(0)}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                            {/* Designer info */}
-                            <div className="text-left">
-                              <h4 className="font-medium text-xs">{designer.name}</h4>
-                              <div className="flex items-center justify-between">
-                                <p className="text-xs text-gray-500">{designer.title || designer.style || "Architect"}</p>
-                                <div className="flex items-center text-amber-500 text-xs">
-                                  <span>★</span>
-                                  <span className="ml-1">{designer.rating || (4 + Math.random()).toFixed(1)}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Social Media Feed */}
-            <div>
-              <h2 className="text-lg font-semibold mb-3">Recent Posts</h2>
-              <div className="space-y-4">
-                {/* Post 1 */}
-                <Card className="shadow-sm overflow-hidden">
-                  <CardContent className="p-0">
-                    <div className="p-4">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
-                          <img 
-                            src="https://source.unsplash.com/featured/100x100?person,1" 
-                            alt="User"
-                            className="w-full h-full object-cover" 
-                          />
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-sm">Sarah Chen</h4>
-                          <p className="text-xs text-gray-500">Senior Architect • 2 hours ago</p>
-                        </div>
-                      </div>
-                      <p className="text-sm mb-3">Just finished this amazing modern kitchen renovation project! The client wanted a minimalist design with sustainable materials.</p>
-                      <div className="rounded-md overflow-hidden mb-3">
-                        <img 
-                          src="https://source.unsplash.com/featured/800x600?kitchen,modern" 
-                          alt="Kitchen design" 
-                          className="w-full h-64 object-cover"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-sm text-gray-500">
-                        <div className="flex items-center gap-4">
-                          <button className="flex items-center gap-1 hover:text-gray-700">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-                            </svg>
-                            <span>143 likes</span>
-                          </button>
-                          <button className="flex items-center gap-1 hover:text-gray-700">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                            </svg>
-                            <span>24 comments</span>
-                          </button>
-                        </div>
-                        <button className="hover:text-gray-700">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path>
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Post 2 */}
-                <Card className="shadow-sm overflow-hidden">
-                  <CardContent className="p-0">
-                    <div className="p-4">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
-                          <img 
-                            src="https://source.unsplash.com/featured/100x100?person,2" 
-                            alt="User"
-                            className="w-full h-full object-cover" 
-                          />
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-sm">Michael Torres</h4>
-                          <p className="text-xs text-gray-500">Architectural Designer • 5 hours ago</p>
-                        </div>
-                      </div>
-                      <p className="text-sm mb-3">Excited to share my latest office space transformation! We focused on bringing natural light and incorporating biophilic design principles.</p>
-                      <div className="grid grid-cols-2 gap-2 mb-3">
-                        <img 
-                          src="https://source.unsplash.com/featured/400x300?office,design,1" 
-                          alt="Office design" 
-                          className="w-full h-40 object-cover rounded-md"
-                        />
-                        <img 
-                          src="https://source.unsplash.com/featured/400x300?office,plants,1" 
-                          alt="Office with plants" 
-                          className="w-full h-40 object-cover rounded-md"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-sm text-gray-500">
-                        <div className="flex items-center gap-4">
-                          <button className="flex items-center gap-1 hover:text-gray-700">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-                            </svg>
-                            <span>89 likes</span>
-                          </button>
-                          <button className="flex items-center gap-1 hover:text-gray-700">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                            </svg>
-                            <span>12 comments</span>
-                          </button>
-                        </div>
-                        <button className="hover:text-gray-700">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path>
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                  <p className="text-amber-200">Satisfação do Cliente</p>
+                </div>
+              </motion.div>
             </div>
           </div>
+        </div>
 
-          {/* Sidebar - 1/3 width */}
-          <div className="space-y-6">
-            {/* Latest News Section */}
-            <div>
-              <div className="flex justify-between items-center mb-3">
-                <h2 className="text-lg font-semibold">Latest News</h2>
-                <Link href="/news" className="text-sm text-rose-500 hover:text-rose-700">
-                  View all
-                </Link>
-              </div>
-              <Card className="shadow-sm overflow-hidden">
-                <CardContent className="p-0">
-                  <NewsCarousel />
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Welcome Card */}
-            <Card className="shadow-sm">
-              <CardContent className="pt-5 px-4">
-                <h3 className="font-semibold mb-1">
-                  Welcome, {user ? user.username : "Guest"}!
-                </h3>
-                <p className="text-sm text-gray-600 mb-3">
-                  {user 
-                    ? "You are now logged in as a user."
-                    : "You are now browsing as a guest user."
-                  }
-                </p>
-                {!user && (
-                  <Link href="/auth">
-                    <Button size="sm" className="w-full bg-rose-500 hover:bg-rose-600">Login / Sign Up</Button>
-                  </Link>
+        <div className="max-w-7xl mx-auto px-6 py-12">
+          {/* Search and Filters */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.6 }}
+          >
+            <Card className="mb-12 shadow-xl border-0 bg-white/80 backdrop-amber-sm">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Filter className="w-5 h-5 text-amber-600" />
+                  <CardTitle className="text-amber-900">Encontre o Profissional Perfeito</CardTitle>
+                </div>
+                <CardDescription>
+                  Use os filtros abaixo para encontrar arquitetos que atendam exatamente às suas necessidades
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      placeholder="Buscar por nome ou especialidade"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="pl-10 bg-white border-gray-200 focus:border-amber-500 focus:ring-amber-500"
+                    />
+                  </div>
+                  
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
+                    <Select onValueChange={setLocation} value={location}>
+                      <SelectTrigger className="pl-10 bg-white border-gray-200 focus:border-amber-500">
+                        <SelectValue placeholder="Localização" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {locations.map((loc) => (
+                          <SelectItem key={loc.value} value={loc.value}>
+                            {loc.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="relative">
+                    <Briefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
+                    <Select onValueChange={setService} value={service}>
+                      <SelectTrigger className="pl-10 bg-white border-gray-200 focus:border-amber-500">
+                        <SelectValue placeholder="Serviço" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {servicesList.map((svc) => (
+                          <SelectItem key={svc} value={svc}>
+                            {svc}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="relative">
+                    <Award className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
+                    <Select onValueChange={setRating} value={rating}>
+                      <SelectTrigger className="pl-10 bg-white border-gray-200 focus:border-amber-500">
+                        <SelectValue placeholder="Avaliação mínima" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["3", "4", "4.5"].map((r) => (
+                          <SelectItem key={r} value={r}>
+                            {r}+ estrelas
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                {(search || location || service || rating) && (
+                  <div className="mt-4 flex items-center gap-2">
+                    <span className="text-sm text-gray-600">Filtros ativos:</span>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setSearch("");
+                        setLocation("");
+                        setService("");
+                        setRating("");
+                      }}
+                      className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                    >
+                      Limpar todos
+                    </Button>
+                  </div>
                 )}
               </CardContent>
             </Card>
+          </motion.div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {/* Lista de designers */}
+            <section className="lg:col-span-3">
+              <div className="mb-6 flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {filtered.length} Arquitetos Encontrados
+                </h2>
+                <Badge variant="secondary" className="bg-amber-100 text-amber-700 px-3 py-1">
+                  Todos Verificados
+                </Badge>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {filtered.map((d, index) => (
+                  <motion.div
+                    key={d.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: index * 0.1 }}
+                    whileHover={{ 
+                      scale: 1.02, 
+                      boxShadow: '0px 20px 40px rgba(0,0,0,0.1)' 
+                    }}
+                    className="group"
+                  >
+                    <Card className="overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-300 bg-white">
+                      <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-50 p-6">
+                        <div className="flex items-start gap-4">
+                          <div className="relative">
+                            <Avatar className="w-16 h-16 ring-4 ring-white shadow-lg">
+                              <AvatarImage src={d.profileImage} />
+                              <AvatarFallback className="bg-gradient-to-br from-amber-500 to-amber-600 text-white text-lg font-semibold">
+                                {d.name.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-3 border-white flex items-center justify-center">
+                              <CheckCircle className="w-4 h-4 text-white" />
+                            </div>
+                          </div>
+                          <div className="flex-1">
+                            <CardTitle className="text-xl text-gray-900 mb-1 group-hover:text-amber-600 transition-colors">
+                              {d.name}
+                            </CardTitle>
+                            <CardDescription className="text-gray-600 mb-2">
+                              {d.title || "Arquiteto Profissional"}
+                            </CardDescription>
+                            <div className="flex items-center gap-1">
+                              <Star className="w-4 h-4 text-amber-400 fill-current" />
+                              <span className="font-semibold text-gray-900">
+                                {d.rating ? d.rating.toFixed(1) : "5.0"}
+                              </span>
+                              <span className="text-sm text-gray-500 ml-1">
+                                (50+ avaliações)
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      
+                      <CardContent className="p-6 space-y-4">
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                            <Briefcase className="w-4 h-4 text-amber-600" />
+                            Especialidades
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                            {d.services?.slice(0, 3).map((service, idx) => (
+                              <Badge 
+                                key={idx} 
+                                variant="secondary" 
+                                className="bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors"
+                              >
+                                {service}
+                              </Badge>
+                            ))}
+                            {d.services && d.services.length > 3 && (
+                              <Badge variant="outline" className="text-gray-500">
+                                +{d.services.length - 3} mais
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <MapPin className="w-4 h-4" />
+                          <span className="text-sm">{d.location || 'Localização não informada'}</span>
+                        </div>
+                        
+                        <div className="flex gap-2 pt-2">
+                          <Link href={`/designer/${d.id}`} className="flex-1">
+                            <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium py-2.5 rounded-xl transition-all duration-200 group-hover:bg-amber-700">
+                              Ver Perfil Completo
+                            </Button>
+                          </Link>
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            className="border-amber-200 text-amber-600 hover:bg-amber-50 rounded-xl"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+              
+              {filtered.length === 0 && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center py-16"
+                >
+                  <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Search className="w-12 h-12 text-gray-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                    Nenhum arquiteto encontrado
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    Tente ajustar os filtros ou remover algumas restrições de busca
+                  </p>
+                  <Button 
+                    onClick={() => {
+                      setSearch("");
+                      setLocation("");
+                      setService("");
+                      setRating("");
+                    }}
+                    className="bg-amber-600 hover:bg-amber-700 text-white"
+                  >
+                    Limpar Filtros
+                  </Button>
+                </motion.div>
+              )}
+            </section>
+
+            {/* Sidebar */}
+            <aside className="space-y-6">
+              {/* Premium Features */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.8 }}
+              >
+                <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200 shadow-lg">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-5 h-5 text-amber-600" />
+                      <CardTitle className="text-amber-800">Recursos Premium</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-semibold text-gray-900 text-sm">Contratação Expressa</h4>
+                        <p className="text-xs text-gray-600">Conecte-se instantaneamente com arquitetos disponíveis</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-semibold text-gray-900 text-sm">Garantia de Qualidade</h4>
+                        <p className="text-xs text-gray-600">100% dos profissionais são verificados e avaliados</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-semibold text-gray-900 text-sm">Suporte 24/7</h4>
+                        <p className="text-xs text-gray-600">Assistência completa durante todo o projeto</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* Destaques */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 1.0 }}
+              >
+                <Card className="shadow-lg border-0">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5 text-amber-600" />
+                      <CardTitle className="text-amber-900">Destaques da Semana</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {anuncios.map((a) => (
+                      <div key={a.id} className="p-3 bg-amber-50 rounded-lg border border-amber-100">
+                        <h4 className="font-semibold text-amber-900 mb-1 text-sm">{a.titulo}</h4>
+                        <p className="text-amber-700 text-xs">{a.descricao}</p>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* CTA Support */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 1.2 }}
+              >
+                <Card className="bg-gradient-to-br from-amber-600 to-amber-700 text-white shadow-xl border-0">
+                  <CardContent className="p-6 text-center">
+                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <MessageCircle className="w-6 h-6 text-white" />
+                    </div>
+                    <CardTitle className="text-white mb-3 text-lg">
+                      Precisa de Ajuda?
+                    </CardTitle>
+                    <CardDescription className="text-amber-100 text-sm mb-4">
+                      Nossa equipe especializada está pronta para ajudar você a encontrar o arquiteto perfeito para seu projeto.
+                    </CardDescription>
+                    <Button className="w-full bg-white text-amber-600 hover:bg-amber-50 font-semibold py-2.5 rounded-xl transition-all duration-200">
+                      Falar com Especialista
+                    </Button>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </aside>
           </div>
         </div>
       </div>
     </ApplicationLayout>
   );
-};
+}
 
-export default SocialFeed;
+// Dados de anúncios
+const anuncios = [
+  {
+    id: 1,
+    titulo: "Projeto Residencial Premium",
+    descricao: "20% de desconto para projetos residenciais acima de R$ 50k.",
+  },
+  {
+    id: 2,
+    titulo: "Consultoria Gratuita",
+    descricao: "Primeira consulta sem custo para novos clientes.",
+  },
+  {
+    id: 3,
+    titulo: "Pacote Comercial",
+    descricao: "Soluções completas para ambientes corporativos.",
+  },
+];
+
+

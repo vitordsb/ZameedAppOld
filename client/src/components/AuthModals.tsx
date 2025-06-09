@@ -26,19 +26,22 @@ import { useAuth } from "@/hooks/use-auth";
 
 // Schema for login
 const loginSchema = z.object({
-  username: z.string().min(1, "Username is required"),
-  password: z.string().min(1, "Password is required"),
+  username: z.string().min(1, "Apelido é necessário"),
+  password: z.string().min(1, "Senha é indispensável"),
 });
 
 // Schema for registration
 const registerSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  name: z.string().min(2, "Name is required"),
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string().min(6, "Please confirm your password"),
+  username: z.string().min(3, "Apelido deve conter no mínimo 3 caracteres"),
+  name: z.string().min(2, "Nome completo é necessário"),
+  email: z.string().email("Por favor preencha um email válido"),
+  password: z.string().min(6, "Senha deve conter no mínimo 6 caracteres"),
+  confirmPassword: z.string().min(6, "Por favor confirme sua senha"),
+  acceptTerms: z.literal(true, {
+    errorMap: () => ({ message: "É obrigatório aceitar os termos para se cadastrar" }),
+  }),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
+  message: "Senhas não coincidem",
   path: ["confirmPassword"],
 });
 
@@ -84,18 +87,18 @@ export const AuthModals = ({
       email: "",
       password: "",
       confirmPassword: "",
+      acceptTerms: false,
     },
   });
 
-  // Get auth mutations from our hook
-  const { loginMutation, registerMutation } = useAuth();
 
   // Watch for login success
+  const { loginMutation, registerMutation } = useAuth();
   useEffect(() => {
     if (loginMutation.isSuccess) {
       toast({
-        title: "Login successful",
-        description: "You have been successfully logged in",
+        title: "Login com sucesso",
+        description: "Você está logado com sucesso",
       });
       
       loginForm.reset();
@@ -108,8 +111,8 @@ export const AuthModals = ({
   useEffect(() => {
     if (loginMutation.isError) {
       toast({
-        title: "Login failed",
-        description: loginMutation.error?.message || "Please check your username and password",
+        title: "Algo deu errado",
+        description: loginMutation.error?.message || "Por favor verifique as credênciais",
         variant: "destructive",
       });
     }
@@ -119,8 +122,8 @@ export const AuthModals = ({
   useEffect(() => {
     if (registerMutation.isSuccess) {
       toast({
-        title: "Registration successful",
-        description: "Your account has been created. You can now log in.",
+        title: "Registro com sucesso",
+        description: "Sua conta foi criada com sucesso",
       });
       
       registerForm.reset();
@@ -133,21 +136,18 @@ export const AuthModals = ({
   useEffect(() => {
     if (registerMutation.isError) {
       toast({
-        title: "Registration failed",
-        description: registerMutation.error?.message || "Please try again with different credentials",
+        title: "Registro falhou",
+        description: registerMutation.error?.message || "Por favor, preencha corretamente",
         variant: "destructive",
       });
     }
   }, [registerMutation.isError, registerMutation.error, toast]);
 
-  // Handle login form submission
   const onLoginSubmit = (data: LoginForm) => {
     loginMutation.mutate(data);
   };
 
-  // Handle register form submission
   const onRegisterSubmit = (data: RegisterForm) => {
-    // The useAuth hook will handle stripping the confirmPassword field
     registerMutation.mutate(data);
   };
 
@@ -170,7 +170,7 @@ export const AuthModals = ({
                 name="username"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Username</FormLabel>
+                    <FormLabel>Apelido</FormLabel>
                     <FormControl>
                       <Input placeholder="Insira seu nome" {...field} />
                     </FormControl>
@@ -184,7 +184,7 @@ export const AuthModals = ({
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>Senha</FormLabel>
                     <FormControl>
                       <Input type="password" placeholder="Coloque sua senha" {...field} />
                     </FormControl>
@@ -200,15 +200,15 @@ export const AuthModals = ({
                   className="mt-2 sm:mt-0"
                   onClick={onSwitchToRegister}
                 >
-                  Don't have an account? Register
+                Não possui uma conta? Crie agora
                 </Button>
                 <Button type="submit" disabled={loginMutation.isPending}>
                   {loginMutation.isPending ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Please wait
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Por favor espere
                     </>
                   ) : (
-                    "Login"
+                    "Fazer login"
                   )}
                 </Button>
               </DialogFooter>
@@ -217,13 +217,12 @@ export const AuthModals = ({
         </DialogContent>
       </Dialog>
 
-      {/* Register Dialog */}
       <Dialog open={isRegisterOpen} onOpenChange={onRegisterClose}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[625px]">
           <DialogHeader>
-            <DialogTitle className="text-2xl">Create Account</DialogTitle>
+            <DialogTitle className="text-2xl">Crie sua conta</DialogTitle>
             <DialogDescription>
-              Register a new account to interact with the community
+              Crie sua conta para começar a usar ZameedApp
             </DialogDescription>
           </DialogHeader>
           
@@ -234,9 +233,9 @@ export const AuthModals = ({
                 name="username"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Username</FormLabel>
+                    <FormLabel>Apelido</FormLabel>
                     <FormControl>
-                      <Input placeholder="Choose a username" {...field} />
+                      <Input placeholder="Escolha um apelido" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -248,9 +247,9 @@ export const AuthModals = ({
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full Name</FormLabel>
+                    <FormLabel>Nome completo </FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your full name" {...field} />
+                      <Input placeholder="Seu nome completo" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -264,7 +263,7 @@ export const AuthModals = ({
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="Enter your email" {...field} />
+                      <Input type="email" placeholder="Coloque seu email" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -276,9 +275,9 @@ export const AuthModals = ({
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>Senha</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="Create a password" {...field} />
+                      <Input type="password" placeholder="Crie sua senha" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -290,15 +289,36 @@ export const AuthModals = ({
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirm Password</FormLabel>
+                    <FormLabel>Confirmar senha</FormLabel>
+                    <Input type="password" placeholder="Confirme sua senha" {...field} />
                     <FormControl>
-                      <Input type="password" placeholder="Confirm your password" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+              <FormField
+  control={registerForm.control}
+  name="acceptTerms"
+  render={({ field }) => (
+    <FormItem>
+      <div className="flex items-start space-x-2">
+        <input
+          type="checkbox"
+          id="acceptTerms"
+          className="mt-1"
+          {...field}
+          checked={field.value}
+          onChange={(e) => field.onChange(e.target.checked)}  
+        />
+        <FormLabel htmlFor="acceptTerms" className="text-sm cursor-pointer">
+          Declaro que li e aceito integralmente os <a href="/termos" className="underline text-amber-600">termos de uso</a> da plataforma
+        </FormLabel>
+      </div>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
               <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-4">
                 <Button
                   type="button"
@@ -306,15 +326,15 @@ export const AuthModals = ({
                   className="mt-2 sm:mt-0"
                   onClick={onSwitchToLogin}
                 >
-                  Already have an account? Login
+                Já possui conta? Faça login
                 </Button>
                 <Button type="submit" disabled={registerMutation.isPending}>
                   {registerMutation.isPending ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Please wait
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />Por favor espere
                     </>
                   ) : (
-                    "Register"
+                    "Enviar registro"
                   )}
                 </Button>
               </DialogFooter>

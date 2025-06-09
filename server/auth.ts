@@ -1,31 +1,25 @@
+
 import passport from 'passport';
 import { Strategy as LocalStrategy } from 'passport-local';
-import { storage } from './storage';
+import { IStorage } from './storage';
 import { User } from '@shared/schema';
 import type { Express } from 'express';
 import session from 'express-session';
-import createMemoryStore from 'memorystore';
 import { log } from './vite';
 
-// Create memorystore
-const MemoryStore = createMemoryStore(session);
-
-export function setupAuth(app: Express) {
-  // Session setup with MemoryStore
+export function setupAuth(app: Express, storage: IStorage) {
+  // Session setup with simple memory store for now
   app.use(
     session({
-      secret: 'designer-marketplace-secret',
+      secret: 'zameed-designer-marketplace-secret-2025',
       resave: false,
       saveUninitialized: false,
       cookie: { 
         maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
-        secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax', // Helps prevent CSRF
         httpOnly: true, // Prevents client-side JS from reading the cookie
-      },
-      store: new MemoryStore({
-        checkPeriod: 86400000 // prune expired entries every 24h
-      })
+        secure: process.env.NODE_ENV === 'production'
+      }
     })
   );
 
@@ -82,6 +76,8 @@ export function setupAuth(app: Express) {
       '/api/posts',
       '/api/posts/likes',
       '/api/posts/comments',
+      '/api/products',
+      '/api/products/featured',
       '/api/admin/bootstrap'
     ];
     
@@ -136,3 +132,5 @@ export function isAdmin(req: any, res: any, next: any) {
   }
   res.status(403).json({ message: 'Access denied. Admin role required.' });
 }
+
+

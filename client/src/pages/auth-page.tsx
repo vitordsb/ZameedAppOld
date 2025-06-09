@@ -70,27 +70,27 @@ export default function AuthPage() {
         </div>
       </div>
 
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-tr from-primary to-primary/50 items-center justify-center">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-tr from-amber-600 to-amber-600/50 items-center justify-center">
         <div className="max-w-md p-8 text-white">
-          <h2 className="text-3xl font-bold mb-6">Discover Interior Design Excellence</h2>
+          <h2 className="text-3xl font-bold mb-6">Descubra profissionais incríveis</h2>
           <ul className="space-y-4">
             <li className="flex items-start">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center mr-3">
                 ✓
               </div>
-              <p>Connect with world-class interior designers</p>
+              <p>Encontre o projetista perfeito para o seu projeto</p>
             </li>
             <li className="flex items-start">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center mr-3">
                 ✓
               </div>
-              <p>Get inspired by thousands of stunning designs</p>
+              <p>Compare portfólios e escolha o melhor designer</p>
             </li>
             <li className="flex items-start">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center mr-3">
                 ✓
               </div>
-              <p>Find the perfect designer for your next project</p>
+              <p>Compartilhe projetos e obtenha feedbacks valiosos</p>
             </li>
           </ul>
         </div>

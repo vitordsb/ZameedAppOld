@@ -52,7 +52,7 @@ export default function TestAuth() {
     
     if (regPassword !== regConfirmPassword) {
       toast({
-        title: "Passwords don't match",
+        title: "Senhas não coincidem",
         variant: "destructive",
       });
       return;

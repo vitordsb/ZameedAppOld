@@ -1,6 +1,6 @@
-import type { Express, Request, Response, NextFunction } from "express";
+
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { IStorage } from "./storage";
 import { 
   insertDesignerSchema, insertMessageSchema, insertUserSchema, loginUserSchema, updateDesignerSchema, 
   User, Product, ProductReview, InsertProductReview, UpdateProduct, InsertProduct 
@@ -9,8 +9,12 @@ import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import passport from "passport";
 import { isAuthenticated, isDesigner, isAdmin } from "./auth";
+import { setupVite } from "./vite";
+import type { Request, Response } from "express";
+import type { Express } from "express";
+import type { Server } from "http";
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function registerRoutes(app: Express, storage: IStorage): Promise<Server> {
   // Authentication routes
   
   // Register a new user
@@ -49,6 +53,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             username: newUser.username,
             name: newUser.name,
             email: newUser.email,
+            profileImage: newUser.profileImage,
             userType: newUser.userType
           }
         });
@@ -58,160 +63,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const validationError = fromZodError(error);
         return res.status(400).json({ message: validationError.message });
       }
+      console.error("Registration error:", error);
       res.status(500).json({ message: "Failed to register user" });
     }
   });
   
-  // Login a user
-  app.post("/api/auth/login", (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const loginData = loginUserSchema.parse(req.body);
+  // Login user
+  app.post("/api/auth/login", (req: Request, res: Response, next) => {
+    passport.authenticate("local", (err: any, user: User | false, info: any) => {
+      if (err) {
+        return res.status(500).json({ message: "Authentication error" });
+      }
+      if (!user) {
+        return res.status(401).json({ message: info?.message || "Invalid credentials" });
+      }
       
-      passport.authenticate("local", (err: any, user: any, info: any) => {
-        if (err) {
-          return next(err);
+      req.login(user, (loginErr) => {
+        if (loginErr) {
+          return res.status(500).json({ message: "Login error" });
         }
-        
-        if (!user) {
-          return res.status(401).json({ message: info?.message || "Authentication failed" });
-        }
-        
-        req.login(user, (err) => {
-          if (err) {
-            return next(err);
-          }
-          
-          // Return only the user object to match client expectations
-          return res.json({
+        return res.json({
+          message: "Login successful",
+          user: {
             id: user.id,
             username: user.username,
             name: user.name,
             email: user.email,
+            profileImage: user.profileImage,
             userType: user.userType
-          });
+          }
         });
-      })(req, res, next);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        const validationError = fromZodError(error);
-        return res.status(400).json({ message: validationError.message });
-      }
-      res.status(500).json({ message: "Failed to login" });
-    }
+      });
+    })(req, res, next);
   });
   
-  // Get current user
-  app.get("/api/auth/me", isAuthenticated, (req: Request, res: Response) => {
-    const user = req.user as any;
-    res.json({
-      id: user.id,
-      username: user.username,
-      name: user.name,
-      email: user.email,
-      userType: user.userType,
-      profileImage: user.profileImage
-    });
-  });
-  
-  // Logout
-  app.post("/api/auth/logout", (req: Request, res: Response, next: NextFunction) => {
-    req.logout((err) => {
-      if (err) {
-        return next(err);
-      }
-      res.json({ message: "Logout successful" });
-    });
-  });
-  
-  // Guest login endpoint
-  app.post("/api/auth/guest-login", async (req: Request, res: Response, next: NextFunction) => {
+  // Guest login
+  app.post("/api/auth/guest-login", async (req: Request, res: Response) => {
     try {
-      // Find the guest user
       const guestUser = await storage.getUserByUsername("guest_user");
       
       if (!guestUser) {
-        return res.status(500).json({ message: "Guest account not found" });
+        return res.status(404).json({ message: "Guest user not found" });
       }
       
-      // Log in as the guest user
       req.login(guestUser, (err) => {
         if (err) {
-          console.error("Guest login error:", err);
-          return next(err);
+          return res.status(500).json({ message: "Error logging in as guest" });
         }
-        
-        return res.status(200).json({ 
+        return res.json({
           message: "Guest login successful",
           user: {
             id: guestUser.id,
             username: guestUser.username,
             name: guestUser.name,
             email: guestUser.email,
-            userType: guestUser.userType,
-            profileImage: guestUser.profileImage
+            profileImage: guestUser.profileImage,
+            userType: guestUser.userType
           }
         });
       });
     } catch (error) {
       console.error("Guest login error:", error);
-      res.status(500).json({ message: "An error occurred during guest login" });
+      res.status(500).json({ message: "Failed to login as guest" });
     }
   });
   
-  // Bootstrap first admin user (no auth required - should be secured in production)
-  app.post("/api/admin/bootstrap", async (req: Request, res: Response) => {
-    try {
-      // Check if an admin already exists in the system
-      const users = await storage.getAllUsers();
-      const adminExists = users.some((user: User) => user.userType === 'admin');
-      
-      if (adminExists) {
-        return res.status(403).json({ message: "An admin user already exists. Use the regular admin creation endpoint." });
+  // Logout user
+  app.post("/api/auth/logout", (req: Request, res: Response) => {
+    req.logout((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Logout error" });
       }
-      
-      // If no admin exists, allow creating the first one
-      const userData = insertUserSchema.parse(req.body);
-      
-      // Check if username already exists
-      const existingUserByUsername = await storage.getUserByUsername(userData.username);
-      if (existingUserByUsername) {
-        return res.status(400).json({ message: "Username already exists" });
-      }
-      
-      // Check if email already exists
-      const existingUserByEmail = await storage.getUserByEmail(userData.email);
-      if (existingUserByEmail) {
-        return res.status(400).json({ message: "Email already exists" });
-      }
-      
-      // Validate that passwords match
-      if (userData.password !== userData.confirmPassword) {
-        return res.status(400).json({ message: "Passwords do not match" });
-      }
-      
-      // Force userType to be admin
-      userData.userType = 'admin';
-      
-      const newAdmin = await storage.createUser(userData);
-      
-      res.status(201).json({ 
-        message: "First admin user created successfully",
+      res.json({ message: "Logout successful" });
+    });
+  });
+  
+  // Get current user
+  app.get("/api/auth/user", (req: Request, res: Response) => {
+    if (req.isAuthenticated() && req.user) {
+      const user = req.user as User;
+      res.json({
         user: {
-          id: newAdmin.id,
-          username: newAdmin.username,
-          name: newAdmin.name,
-          email: newAdmin.email,
-          userType: newAdmin.userType
+          id: user.id,
+          username: user.username,
+          name: user.name,
+          email: user.email,
+          profileImage: user.profileImage,
+          userType: user.userType
         }
       });
-    } catch (error) {
-      if (error instanceof ZodError) {
-        const validationError = fromZodError(error);
-        return res.status(400).json({ message: validationError.message });
-      }
-      res.status(500).json({ message: "Failed to create admin user" });
+    } else {
+      res.status(401).json({ message: "Not authenticated" });
     }
   });
+
+  // Admin routes
   
   // Get all users (admin only)
   app.get("/api/admin/users", isAuthenticated, isAdmin, async (req: Request, res: Response) => {
@@ -222,81 +168,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch users" });
     }
   });
-
-  // Create additional admin users (requires admin authentication)
-  app.post("/api/admin/create", isAuthenticated, isAdmin, async (req: Request, res: Response) => {
+  
+  // Update user (admin only)
+  app.put("/api/admin/users/:id", isAuthenticated, isAdmin, async (req: Request, res: Response) => {
     try {
-      const userData = insertUserSchema.parse(req.body);
+      const userId = parseInt(req.params.id);
+      const updatedUser = await storage.updateUser(userId, req.body);
       
-      // Check if username already exists
-      const existingUserByUsername = await storage.getUserByUsername(userData.username);
-      if (existingUserByUsername) {
-        return res.status(400).json({ message: "Username already exists" });
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
       }
       
-      // Check if email already exists
-      const existingUserByEmail = await storage.getUserByEmail(userData.email);
-      if (existingUserByEmail) {
-        return res.status(400).json({ message: "Email already exists" });
-      }
+      res.json(updatedUser);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  // Designer routes
+  
+  // Get all designers
+  app.get("/api/designers", async (req: Request, res: Response) => {
+    try {
+      const { style, minPrice, maxPrice, location } = req.query;
       
-      // Validate that passwords match
-      if (userData.password !== userData.confirmPassword) {
-        return res.status(400).json({ message: "Passwords do not match" });
-      }
+      let designers;
       
-      // Force userType to be admin for this endpoint
-      userData.userType = 'admin';
-      
-      const newAdmin = await storage.createUser(userData);
-      
-      res.status(201).json({ 
-        message: "Admin user created successfully",
-        user: {
-          id: newAdmin.id,
-          username: newAdmin.username,
-          name: newAdmin.name,
-          email: newAdmin.email,
-          userType: newAdmin.userType
+      if (style && typeof style === 'string') {
+        designers = await storage.getDesignersByStyle(style);
+      } else if (minPrice && maxPrice) {
+        const min = Number(minPrice);
+        const max = Number(maxPrice);
+        if (!isNaN(min) && !isNaN(max)) {
+          designers = await storage.getDesignersByPriceRange(min, max);
+        } else {
+          designers = await storage.getAllDesigners();
         }
+      } else if (location && typeof location === 'string') {
+        designers = await storage.getDesignersByLocation(location);
+      } else {
+        designers = await storage.getAllDesigners();
+      }
+      
+      res.json(designers);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Failed to fetch designers" });
+    }
+  });
+  
+  // Get designer by ID
+  app.get("/api/designers/:id", async (req: Request, res: Response) => {
+    try {
+      const designerId = parseInt(req.params.id);
+      const designer = await storage.getDesignerById(designerId);
+      
+      if (!designer) {
+        return res.status(404).json({ message: "Designer not found" });
+      }
+      
+      res.json(designer);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Failed to fetch designer" });
+    }
+  });
+  
+  // Create designer profile (authenticated users only)
+  app.post("/api/designers", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      
+      // Check if user already has a designer profile
+      const existingDesigner = await storage.getDesignerByUserId(user.id);
+      if (existingDesigner) {
+        return res.status(400).json({ message: "User already has a designer profile" });
+      }
+      
+      const designerData = insertDesignerSchema.parse({
+        ...req.body,
+        userId: user.id
       });
+      
+      const newDesigner = await storage.createDesigner(designerData);
+      
+      // Update user type to designer
+      await storage.updateUser(user.id, { userType: "designer" });
+      
+      res.status(201).json(newDesigner);
     } catch (error) {
       if (error instanceof ZodError) {
         const validationError = fromZodError(error);
         return res.status(400).json({ message: validationError.message });
       }
-      res.status(500).json({ message: "Failed to create admin user" });
+      console.error(error);
+      res.status(500).json({ message: "Failed to create designer profile" });
     }
   });
   
-  // Designer profile management
-  
-  // Get designer profile for current user
-  app.get("/api/designer/profile", isAuthenticated, isDesigner, async (req: Request, res: Response) => {
+  // Update designer profile (designer only)
+  app.put("/api/designers/:id", isAuthenticated, isDesigner, async (req: Request, res: Response) => {
     try {
-      const designer = await storage.getDesignerByUserId((req.user as any).id);
+      const designerId = parseInt(req.params.id);
+      const user = req.user as User;
       
-      if (!designer) {
-        return res.status(404).json({ message: "Designer profile not found" });
+      // Check if the designer belongs to the current user
+      const designer = await storage.getDesignerById(designerId);
+      if (!designer || designer.userId !== user.id) {
+        return res.status(403).json({ message: "Not authorized to update this designer profile" });
       }
       
-      res.json(designer);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch designer profile" });
-    }
-  });
-  
-  // Update designer profile
-  app.put("/api/designer/profile", isAuthenticated, isDesigner, async (req: Request, res: Response) => {
-    try {
-      const designer = await storage.getDesignerByUserId((req.user as any).id);
+      const updateData = updateDesignerSchema.parse(req.body);
+      const updatedDesigner = await storage.updateDesigner(designerId, updateData);
       
-      if (!designer) {
-        return res.status(404).json({ message: "Designer profile not found" });
+      if (!updatedDesigner) {
+        return res.status(404).json({ message: "Designer not found" });
       }
-      
-      const designerData = updateDesignerSchema.parse(req.body);
-      const updatedDesigner = await storage.updateDesigner(designer.id, designerData);
       
       res.json(updatedDesigner);
     } catch (error) {
@@ -304,177 +291,245 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const validationError = fromZodError(error);
         return res.status(400).json({ message: validationError.message });
       }
+      console.error(error);
       res.status(500).json({ message: "Failed to update designer profile" });
     }
   });
+
+  // Profile routes
   
-  // API routes
-
-  // Get all designers
-  app.get("/api/designers", async (req: Request, res: Response) => {
+  // Get user profile
+  app.get("/api/profile", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const designers = await storage.getAllDesigners();
-      res.json(designers);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch designers" });
-    }
-  });
-
-  // Get designer by ID
-  app.get("/api/designers/:id", async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid designer ID" });
+      const user = req.user as User;
+      
+      // Get designer profile if user is a designer
+      let designerProfile = null;
+      if (user.userType === 'designer') {
+        designerProfile = await storage.getDesignerByUserId(user.id);
       }
-
-      const designer = await storage.getDesignerById(id);
-      if (!designer) {
-        return res.status(404).json({ message: "Designer not found" });
-      }
-
-      res.json(designer);
+      
+      res.json({
+        user: {
+          id: user.id,
+          username: user.username,
+          name: user.name,
+          email: user.email,
+          profileImage: user.profileImage,
+          userType: user.userType
+        },
+        designerProfile
+      });
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch designer" });
-    }
-  });
-
-  // Create a new designer
-  app.post("/api/designers", async (req: Request, res: Response) => {
-    try {
-      const designerData = insertDesignerSchema.parse(req.body);
-      const newDesigner = await storage.createDesigner(designerData);
-      res.status(201).json(newDesigner);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        const validationError = fromZodError(error);
-        return res.status(400).json({ message: validationError.message });
-      }
-      res.status(500).json({ message: "Failed to create designer" });
-    }
-  });
-
-  // Filter designers by style
-  app.get("/api/designers/filter/style/:style", async (req: Request, res: Response) => {
-    try {
-      const style = req.params.style;
-      const designers = await storage.getDesignersByStyle(style);
-      res.json(designers);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to filter designers by style" });
-    }
-  });
-
-  // Filter designers by price range
-  app.get("/api/designers/filter/price", async (req: Request, res: Response) => {
-    try {
-      const min = parseInt(req.query.min as string) || 0;
-      const max = parseInt(req.query.max as string) || 1000;
-      const designers = await storage.getDesignersByPriceRange(min, max);
-      res.json(designers);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to filter designers by price range" });
-    }
-  });
-
-  // Filter designers by location
-  app.get("/api/designers/filter/location/:location", async (req: Request, res: Response) => {
-    try {
-      const location = req.params.location;
-      const designers = await storage.getDesignersByLocation(location);
-      res.json(designers);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to filter designers by location" });
+      console.error(error);
+      res.status(500).json({ message: "Failed to fetch profile" });
     }
   });
   
-  // Post routes - public routes don't require authentication
+  // Update user profile
+  app.put("/api/profile", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { name, email, profileImage } = req.body;
+      
+      const updatedUser = await storage.updateUser(user.id, {
+        name,
+        email,
+        profileImage
+      });
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json({
+        user: {
+          id: updatedUser.id,
+          username: updatedUser.username,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          profileImage: updatedUser.profileImage,
+          userType: updatedUser.userType
+        }
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // Post routes
+  
+  // Get all posts
   app.get("/api/posts", async (req: Request, res: Response) => {
     try {
       const posts = await storage.getAllPosts();
-      res.json(posts);
+      
+      // Get likes and comments for each post
+      const postsWithInteractions = await Promise.all(
+        posts.map(async (post) => {
+          const likes = await storage.getLikesByPostId(post.id);
+          const comments = await storage.getCommentsByPostId(post.id);
+          
+          return {
+            ...post,
+            likes: likes.length,
+            comments: comments.length,
+            likedBy: likes.map(like => like.userId),
+            commentsData: comments
+          };
+        })
+      );
+      
+      res.json(postsWithInteractions);
     } catch (error) {
+      console.error(error);
       res.status(500).json({ message: "Failed to fetch posts" });
     }
   });
   
+  // Get post by ID
   app.get("/api/posts/:id", async (req: Request, res: Response) => {
     try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid post ID" });
-      }
+      const postId = parseInt(req.params.id);
+      const post = await storage.getPostById(postId);
       
-      const post = await storage.getPostById(id);
       if (!post) {
         return res.status(404).json({ message: "Post not found" });
       }
       
-      res.json(post);
+      // Get likes and comments for the post
+      const likes = await storage.getLikesByPostId(post.id);
+      const comments = await storage.getCommentsByPostId(post.id);
+      
+      const postWithInteractions = {
+        ...post,
+        likes: likes.length,
+        comments: comments.length,
+        likedBy: likes.map(like => like.userId),
+        commentsData: comments
+      };
+      
+      res.json(postWithInteractions);
     } catch (error) {
+      console.error(error);
       res.status(500).json({ message: "Failed to fetch post" });
     }
   });
   
-  app.get("/api/designers/:id/posts", async (req: Request, res: Response) => {
+  // Get posts by designer ID
+  app.get("/api/posts/designer/:designerId", async (req: Request, res: Response) => {
     try {
-      const designerId = parseInt(req.params.id);
-      if (isNaN(designerId)) {
-        return res.status(400).json({ message: "Invalid designer ID" });
-      }
-      
+      const designerId = parseInt(req.params.designerId);
       const posts = await storage.getPostsByDesignerId(designerId);
-      res.json(posts);
+      
+      // Get likes and comments for each post
+      const postsWithInteractions = await Promise.all(
+        posts.map(async (post) => {
+          const likes = await storage.getLikesByPostId(post.id);
+          const comments = await storage.getCommentsByPostId(post.id);
+          
+          return {
+            ...post,
+            likes: likes.length,
+            comments: comments.length,
+            likedBy: likes.map(like => like.userId),
+            commentsData: comments
+          };
+        })
+      );
+      
+      res.json(postsWithInteractions);
     } catch (error) {
+      console.error(error);
       res.status(500).json({ message: "Failed to fetch designer posts" });
     }
   });
   
+  // Create a new post (designer only)
   app.post("/api/posts", isAuthenticated, isDesigner, async (req: Request, res: Response) => {
     try {
-      const user = req.user as any;
-      const designer = await storage.getDesignerByUserId(user.id);
+      const user = req.user as User;
       
+      // Get designer profile
+      const designer = await storage.getDesignerByUserId(user.id);
       if (!designer) {
-        return res.status(403).json({ message: "Only designers can create posts" });
+        return res.status(404).json({ message: "Designer profile not found" });
       }
       
-      const postData = req.body;
-      postData.designerId = designer.id;
+      const postData = {
+        ...req.body,
+        designerId: designer.id
+      };
       
       const newPost = await storage.createPost(postData);
       res.status(201).json(newPost);
     } catch (error) {
+      console.error(error);
       res.status(500).json({ message: "Failed to create post" });
     }
   });
   
-  // Like routes
-  app.get("/api/posts/:postId/likes", async (req: Request, res: Response) => {
+  // Update a post (designer only)
+  app.put("/api/posts/:id", isAuthenticated, isDesigner, async (req: Request, res: Response) => {
     try {
-      const postId = parseInt(req.params.postId);
-      if (isNaN(postId)) {
-        return res.status(400).json({ message: "Invalid post ID" });
+      const postId = parseInt(req.params.id);
+      const user = req.user as User;
+      
+      // Check if the post belongs to the current user's designer profile
+      const post = await storage.getPostById(postId);
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
       }
       
-      const likes = await storage.getLikesByPostId(postId);
-      res.json({ 
-        likes,
-        count: likes.length 
-      });
+      const designer = await storage.getDesignerByUserId(user.id);
+      if (!designer || post.designerId !== designer.id) {
+        return res.status(403).json({ message: "Not authorized to update this post" });
+      }
+      
+      const updatedPost = await storage.updatePost(postId, req.body);
+      res.json(updatedPost);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch likes" });
+      console.error(error);
+      res.status(500).json({ message: "Failed to update post" });
     }
   });
   
-  app.post("/api/posts/:postId/like", isAuthenticated, async (req: Request, res: Response) => {
+  // Delete a post (designer only)
+  app.delete("/api/posts/:id", isAuthenticated, isDesigner, async (req: Request, res: Response) => {
     try {
-      const user = req.user as any;
-      const postId = parseInt(req.params.postId);
+      const postId = parseInt(req.params.id);
+      const user = req.user as User;
       
-      if (isNaN(postId)) {
-        return res.status(400).json({ message: "Invalid post ID" });
+      // Check if the post belongs to the current user's designer profile
+      const post = await storage.getPostById(postId);
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
       }
+      
+      const designer = await storage.getDesignerByUserId(user.id);
+      if (!designer || post.designerId !== designer.id) {
+        return res.status(403).json({ message: "Not authorized to delete this post" });
+      }
+      
+      const result = await storage.deletePost(postId);
+      
+      if (!result) {
+        return res.status(500).json({ message: "Failed to delete post" });
+      }
+      
+      res.json({ message: "Post deleted successfully" });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Failed to delete post" });
+    }
+  });
+  
+  // Like a post
+  app.post("/api/posts/:id/like", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const postId = parseInt(req.params.id);
+      const user = req.user as User;
       
       // Check if post exists
       const post = await storage.getPostById(postId);
@@ -482,10 +537,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Post not found" });
       }
       
-      // Check if user already liked the post
+      // Check if user already liked this post
       const existingLike = await storage.getLikeByUserAndPost(user.id, postId);
       if (existingLike) {
-        return res.status(409).json({ message: "User already liked this post" });
+        return res.status(400).json({ message: "Post already liked" });
       }
       
       const newLike = await storage.createLike({
@@ -493,88 +548,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: user.id
       });
       
-      const likes = await storage.getLikesByPostId(postId);
-      
-      res.status(201).json({ 
-        like: newLike,
-        count: likes.length
-      });
+      res.status(201).json(newLike);
     } catch (error) {
+      console.error(error);
       res.status(500).json({ message: "Failed to like post" });
     }
   });
   
-  app.delete("/api/posts/:postId/like", isAuthenticated, async (req: Request, res: Response) => {
+  // Unlike a post
+  app.delete("/api/posts/:id/like", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const user = req.user as any;
-      const postId = parseInt(req.params.postId);
-      
-      if (isNaN(postId)) {
-        return res.status(400).json({ message: "Invalid post ID" });
-      }
+      const postId = parseInt(req.params.id);
+      const user = req.user as User;
       
       // Find the like
-      const existingLike = await storage.getLikeByUserAndPost(user.id, postId);
-      if (!existingLike) {
+      const like = await storage.getLikeByUserAndPost(user.id, postId);
+      if (!like) {
         return res.status(404).json({ message: "Like not found" });
       }
       
-      // Delete the like
-      await storage.deleteLike(existingLike.id);
+      const result = await storage.deleteLike(like.id);
       
-      const likes = await storage.getLikesByPostId(postId);
+      if (!result) {
+        return res.status(500).json({ message: "Failed to unlike post" });
+      }
       
-      res.json({ 
-        success: true,
-        count: likes.length
-      });
+      res.json({ message: "Post unliked successfully" });
     } catch (error) {
+      console.error(error);
       res.status(500).json({ message: "Failed to unlike post" });
     }
   });
   
-  // Comment routes
-  app.get("/api/posts/:postId/comments", async (req: Request, res: Response) => {
+  // Add a comment to a post
+  app.post("/api/posts/:id/comments", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const postId = parseInt(req.params.postId);
-      if (isNaN(postId)) {
-        return res.status(400).json({ message: "Invalid post ID" });
-      }
-      
-      const comments = await storage.getCommentsByPostId(postId);
-      
-      // Get user info for each comment
-      const commentsWithUser = await Promise.all(comments.map(async (comment) => {
-        const user = await storage.getUser(comment.userId);
-        return {
-          ...comment,
-          user: user ? {
-            id: user.id,
-            name: user.name,
-            profileImage: user.profileImage
-          } : null
-        };
-      }));
-      
-      res.json(commentsWithUser);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch comments" });
-    }
-  });
-  
-  app.post("/api/posts/:postId/comments", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const postId = parseInt(req.params.postId);
-      
-      if (isNaN(postId)) {
-        return res.status(400).json({ message: "Invalid post ID" });
-      }
-      
-      const { content } = req.body;
-      if (!content || content.trim() === '') {
-        return res.status(400).json({ message: "Comment content is required" });
-      }
+      const postId = parseInt(req.params.id);
+      const user = req.user as User;
       
       // Check if post exists
       const post = await storage.getPostById(postId);
@@ -582,24 +592,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Post not found" });
       }
       
-      // Create comment
-      const newComment = await storage.createComment({
+      const commentData = {
         postId,
         userId: user.id,
-        content
-      });
-      
-      // Get user info for response
-      const commentWithUser = {
-        ...newComment,
-        user: {
-          id: user.id,
-          name: user.name,
-          profileImage: user.profileImage
-        }
+        content: req.body.content
       };
       
-      res.status(201).json(commentWithUser);
+      const newComment = await storage.createComment(commentData);
+      
+      // Get the comment with user information
+      const commentWithUser = await storage.getCommentsByPostId(postId);
+      const createdComment = commentWithUser.find(c => c.id === newComment.id);
+      
+      res.status(201).json(createdComment);
     } catch (error) {
       res.status(500).json({ message: "Failed to create comment" });
     }
@@ -988,7 +993,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Product Reviews API Endpoints
   app.get("/api/products/:productId/reviews", async (req: Request, res: Response) => {
     try {
-      const productId = parseInt(req.params.id);
+      const productId = parseInt(req.params.productId);
       const reviews = await storage.getReviewsByProductId(productId);
       res.status(200).json(reviews);
     } catch (error) {
@@ -1051,5 +1056,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const httpServer = createServer(app);
 
+  // Setup Vite for frontend
+  if (process.env.NODE_ENV !== "production") {
+    await setupVite(app, httpServer);
+  }
+
   return httpServer;
 }
+
+

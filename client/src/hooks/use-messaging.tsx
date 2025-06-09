@@ -78,7 +78,7 @@ export function useMessaging(initialPartnerId?: string | null) {
         setLoadingConversations(false);
       } else {
         toast({
-          title: 'Error fetching conversations',
+          title: 'Erro ao carregar conversas',
           description: 'Could not load your conversations. Please try again.',
           variant: 'destructive',
         });
