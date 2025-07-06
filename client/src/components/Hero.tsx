@@ -1,19 +1,7 @@
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { useGuestLogin } from "@/hooks/use-guest-login";
-import { Loader2 } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
 
 const Hero = () => {
-  const { user } = useAuth();
-  const [, navigate] = useLocation();
-  const guestLoginMutation = useGuestLogin();
-
-  const handleGuestLogin = async () => {
-    await guestLoginMutation.mutateAsync();
-    navigate("/home");
-  };
-
   return (
     <section 
       className="flex items-center justify-center" 
@@ -29,29 +17,11 @@ const Hero = () => {
         <p className="text-xl md:text-2xl mb-8 max-w-3xl mx-auto">O melhor lugar para encontrar profissionais de design e arquitetura para os seus projetos.</p>
         
         <div className="flex flex-col md:flex-row gap-4 justify-center">
-          <Link href="/home">
+          <Link href="/auth">
             <Button className="bg-amber-500 text-white px-8 py-6 rounded-full text-lg font-semibold hover:bg-amber-600 transition-all flex">
-              Encontre um projetista
+              Encontre agora um projetista
             </Button>
           </Link>
-          
-          {!user && (
-            <Button 
-              variant="outline" 
-              className="bg-transparent border-white text-white px-8 py-6 rounded-full text-lg font-semibold hover:bg-white hover:text-black transition-all flex"
-              onClick={handleGuestLogin}
-              disabled={guestLoginMutation.isPending}
-            >
-              {guestLoginMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Logging in...
-                </>
-              ) : (
-                "Login as Guest"
-              )}
-            </Button>
-          )}
         </div>
       </div>
     </section>

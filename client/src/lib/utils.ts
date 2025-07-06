@@ -1,3 +1,5 @@
+
+// src/lib/utils.ts
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -11,6 +13,7 @@ export function formatPrice(price: number): string {
     currency: "BRL",
   }).format(price);
 }
+
 export function parseJwt<T = any>(token: string): T | null {
   try {
     const base64Url = token.split('.')[1];
@@ -27,18 +30,26 @@ export function parseJwt<T = any>(token: string): T | null {
   }
 }
 
-
 export function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength) + "...";
 }
 
-export function getInitials(name: string): string {
-  return name
+/**
+ * Retorna as iniciais de um nome. Se `name` for vazio ou não definido, retorna string vazia.
+ */
+export function getInitials(name?: string): string {
+  if (!name) return "";
+  const parts = name
     .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase();
+    .filter((n) => n.length > 0);
+  if (parts.length === 0) return "";
+  // Pega a primeira letra de cada parte (até 2 partes)
+  const initials = parts
+    .slice(0, 2)
+    .map((n) => n[0].toUpperCase())
+    .join("");
+  return initials;
 }
 
 export function formatRelativeTime(dateString: string): string {
@@ -73,3 +84,4 @@ export function formatRelativeTime(dateString: string): string {
   const diffInYears = Math.floor(diffInMonths / 12);
   return `${diffInYears} year${diffInYears !== 1 ? 's' : ''} ago`;
 }
+

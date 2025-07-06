@@ -8,15 +8,14 @@ export default function AuthPage() {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   
-  const { isLoggedIn } = useAuth();
-  
+  const { isLoggedIn, isGuest, loginAsGuest } = useAuth();
   const [location, navigate] = useLocation();
   
   useEffect(() => {
-    if (isLoggedIn) {
-      navigate("/");
+    if (isLoggedIn || isGuest) {  
+      navigate("/home");
     }
-  }, [isLoggedIn, navigate]);
+  }, [isLoggedIn, navigate, isGuest]);
   const handleSwitchToRegister = () => {
     setIsLoginOpen(false);
     setIsRegisterOpen(true);
@@ -31,6 +30,10 @@ export default function AuthPage() {
     navigate("/");
   };
 
+  const handleGuest = () => {
+    loginAsGuest();
+    navigate("/home");
+  }
   return (
     <div className="flex min-h-screen">
       <div className="w-full lg:w-1/2 p-8 flex flex-col justify-center items-center bg-white">
@@ -61,7 +64,7 @@ export default function AuthPage() {
             <div className="text-center mt-4">
               <Button 
                 variant="link" 
-                onClick={() => navigate("/")}
+                onClick={handleGuest}
               >
               Quero testar sem conta!
               </Button>

@@ -1,4 +1,4 @@
-
+// src/contexts/AuthContext.tsx
 import React, {
   createContext,
   useContext,
@@ -12,7 +12,9 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isLoggedIn: boolean;
+  isGuest: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginAsGuest: () => void;
   logout: () => void;
 }
 
@@ -35,14 +37,13 @@ function parseJwt<T = any>(token: string): T | null {
   }
 }
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({
-  children,
-}) => {
-  const [token, setToken] = useState<string | null>(() =>
-    localStorage.getItem('token')
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [token, setToken] = useState<string | null>(
+    () => localStorage.getItem('token')
   );
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -56,6 +57,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
+    setIsGuest(false);
     const res = await fetch(
       'https://zameed-backend.onrender.com/auth/login',
       {
@@ -64,33 +66,40 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         body: JSON.stringify({ email, password }),
       }
     );
-
     if (!res.ok) {
       setIsLoading(false);
       throw new Error('Credenciais inválidas');
     }
-
-    console.log('login efetuado com sucesso')
     const { token: jwt } = await res.json();
-
     localStorage.setItem('token', jwt);
     setToken(jwt);
-
     const payload = parseJwt<{ user: User }>(jwt);
     setUser(payload?.user ?? null);
     setIsLoading(false);
-    console.log('login feito com sucesso', payload?.user);
+  };
+
+  const loginAsGuest = () => {
+    setIsGuest(true);
   };
 
   const logout = () => {
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
+    setIsGuest(false);
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, isLoggedIn: !!user, login, logout }}
+      value={{
+        user,
+        isLoading,
+        isLoggedIn: !!user,
+        isGuest,
+        login,
+        loginAsGuest,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>
@@ -102,4 +111,3 @@ export const useAuth = (): AuthContextType => {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 };
-
