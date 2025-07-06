@@ -8,6 +8,8 @@ import { User, insertUserSchema } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import {useEffect } from "react";
+import { parseJwt } from "@/lib/utils";
 export interface OldAuthContextType {
   user: User | null;
   isLoading: boolean;
@@ -16,13 +18,21 @@ export interface OldAuthContextType {
   refetchUser: () => Promise<void>;
 }
 const loginSchema = z.object({
-  username: z.string().min(1, "Username is required"),
+  email: z.string().min(1, "email is required"),
   password: z.string().min(1, "Password is required"),
 });
-const registerSchema = insertUserSchema.extend({
-  confirmPassword: z.string().min(6, "Please confirm your password"),
+const registerSchema = z.object({
+  name: z.string().min(1, "Nome obrigatório"),
+  email: z.string().email("Email inválido"),
+  password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
+  confirmPassword: z.string().min(6, "Confirme sua senha"),
+  cpf: z.string().min(11, "CPF inválido"),
+  type: z.enum(["contratante", "prestador"]),
+  termos_aceitos: z.boolean().refine((val) => val === true, {
+    message: "É preciso aceitar os termos",
+  }),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
+  message: "As senhas não coincidem",
   path: ["confirmPassword"],
 });
 type AuthContextType = {
@@ -31,45 +41,49 @@ type AuthContextType = {
   error: Error | null;
   loginMutation: UseMutationResult<User, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<User, Error, RegisterData>;
+  registerMutation: UseMutationResult<User, Error, RegisterPayload>;
 };
 
 type LoginData = z.infer<typeof loginSchema>;
 type RegisterData = z.infer<typeof registerSchema>;
+type RegisterPayload = Omit<RegisterData, "confirmPassword">;
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
-  const {
-    data: user,
-    error,
-    isLoading,
-  } = useQuery<User | null, Error>({
-    queryKey: ["/api/auth/me"],
-    queryFn: getQueryFn({ on401: "returnNull" }),
-    // This prevents a flash of unauthenticated state on page loads
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchOnWindowFocus: false,
-  });
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      const payload = parseJwt<{ user: User}>(token);
+      setUser(payload?.user ?? null);
+    } else {
+      setUser(null);
+    }
+    setIsLoading(false)
+  })
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
       console.log("Attempting login with:", credentials);
-      const res = await apiRequest("POST", "/api/auth/login", credentials);
+      const res = await apiRequest("POST", "/auth/login", credentials);
       const user = await res.json();
       console.log("Login response:", user);
       return user; // Server now returns the user object directly
     },
     onSuccess: (user: User) => {
-      queryClient.setQueryData(["/api/auth/me"], user);
+      console.log("Login successful:", user);
+      queryClient.setQueryData(["/auth/login"], user);
       toast({
         title: "Login successful",
         description: "You have been successfully logged in",
       });
     },
     onError: (error: Error) => {
+      console.error("Login failed:", error);
       toast({
         title: "Login failed",
         description: error.message || "Please check your username and password",
@@ -78,24 +92,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  const registerMutation = useMutation({
-    mutationFn: async (userData: RegisterData) => {
-      // Remove confirmPassword as it's not needed in the API call
-      const { confirmPassword, ...registerData } = userData;
-      console.log("Attempting registration with:", registerData);
-      const res = await apiRequest("POST", "/api/auth/register", registerData);
+  const registerMutation = useMutation<User, Error, RegisterPayload>({
+    mutationFn: async (userData) => {
+      console.log("Attempting registration with:", userData);
+      const res = await apiRequest("POST", "/auth/register", userData);
       const data = await res.json();
       console.log("Registration response:", data);
       return data.user; // We expect server to return { user: User }
     },
     onSuccess: (user: User) => {
-      queryClient.setQueryData(["/api/auth/me"], user);
+      console.log("Registration successful:", user);
+      queryClient.setQueryData(["/auth/login"], user);
       toast({
         title: "Registration successful",
         description: "Your account has been created successfully",
       });
     },
     onError: (error: Error) => {
+      console.error("Registration failed:", error);
       toast({
         title: "Registration failed",
         description: error.message || "Please try again with different credentials",
@@ -109,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiRequest("POST", "/api/auth/logout");
     },
     onSuccess: () => {
-      queryClient.setQueryData(["/api/auth/me"], null);
+      queryClient.setQueryData(["/auth/login"], null);
       toast({
         title: "Logged out",
         description: "You have been successfully logged out",
@@ -127,9 +141,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        user: user || null,
+        user,
         isLoading,
-        error,
+        error: null,
         loginMutation,
         logoutMutation,
         registerMutation,
@@ -155,7 +169,7 @@ export function useAuth(): AuthContextType & OldAuthContextType {
       await context.logoutMutation.mutateAsync();
     },
     refetchUser: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      await queryClient.invalidateQueries({ queryKey: ["/auth/login"] });
     }
   };
   

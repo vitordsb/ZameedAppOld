@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
@@ -10,7 +9,6 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Designer } from "@shared/schema";
 import {
   Select,
   SelectTrigger,
@@ -59,17 +57,15 @@ export default function SaaSProfessionalDirectory() {
   const [location, setLocation] = useState("");
   const [rating, setRating] = useState("");
   const [service, setService] = useState("");
-
-  const { data: designers = [] } = useQuery<Designer[]>({
-    queryKey: ["/api/designers"],
+  const { data: providers = [] } = useQuery<provider[]>({
+    queryKey: ["/providers"],
   });
 
-  const filtered = designers.filter((d) => {
+  const filtered = providers.filter((d) => {
+    console.log(d)
     const matchesSearch = !search || d.name.toLowerCase().includes(search.toLowerCase());
     const matchesLocation = !location || d.location?.toLowerCase() === location.toLowerCase();
-    const matchesService = !service || d.services?.includes(service);
     const matchesRating = !rating || (d.rating && d.rating >= parseFloat(rating));
-    return matchesSearch && matchesLocation && matchesService && matchesRating;
   });
 
   return (
@@ -232,7 +228,7 @@ export default function SaaSProfessionalDirectory() {
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Lista de designers */}
+            {/* Lista de providers */}
             <section className="lg:col-span-3">
               <div className="mb-6 flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900">

@@ -1,80 +1,105 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from 'react';
 import { User } from '@shared/schema';
 
-// Define the shape of the auth context
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isLoggedIn: boolean;
-  logout: () => Promise<void>;
-  refetchUser: () => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
 }
 
-// Create the auth context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Context provider component
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const queryClient = useQueryClient();
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-
-  // Query for the current user
-  const { data: user, isLoading, refetch } = useQuery<User | null>({
-    queryKey: ['/api/auth/me'],
-    // We want to render even if the query fails (user is not logged in)
-    retry: false,
-    // This prevents a flash of unauthenticated state on page loads
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchOnWindowFocus: false,
-  });
-
-  // Update logged in state when user data changes
-  useEffect(() => {
-    setIsLoggedIn(!!user);
-  }, [user]);
-
-  // Logout function
-  const logout = async () => {
-    try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
-      
-      // Clear user from cache
-      queryClient.setQueryData(['/api/auth/me'], null);
-      setIsLoggedIn(false);
-      
-      // Invalidate queries that might depend on auth state
-      queryClient.invalidateQueries();
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
-
-  // Function to refetch user data
-  const refetchUser = async () => {
-    await refetch();
-  };
-
-  // Context value
-  const value = {
-    user: user || null,
-    isLoading,
-    isLoggedIn,
-    logout,
-    refetchUser,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-// Custom hook to use the auth context
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+// Decodifica o payload de um JWT sem dependências externas
+function parseJwt<T = any>(token: string): T | null {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload) as T;
+  } catch {
+    return null;
   }
-  return context;
+}
+
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
+  const [token, setToken] = useState<string | null>(() =>
+    localStorage.getItem('token')
+  );
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (token) {
+      const payload = parseJwt<{ user: User }>(token);
+      setUser(payload?.user ?? null);
+    } else {
+      setUser(null);
+    }
+    setIsLoading(false);
+  }, [token]);
+
+  const login = async (email: string, password: string) => {
+    setIsLoading(true);
+    const res = await fetch(
+      'https://zameed-backend.onrender.com/auth/login',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      }
+    );
+
+    if (!res.ok) {
+      setIsLoading(false);
+      throw new Error('Credenciais inválidas');
+    }
+
+    console.log('login efetuado com sucesso')
+    const { token: jwt } = await res.json();
+
+    localStorage.setItem('token', jwt);
+    setToken(jwt);
+
+    const payload = parseJwt<{ user: User }>(jwt);
+    setUser(payload?.user ?? null);
+    setIsLoading(false);
+    console.log('login feito com sucesso', payload?.user);
+  };
+
+  const logout = () => {
+    localStorage.removeItem('token');
+    setToken(null);
+    setUser(null);
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{ user, isLoading, isLoggedIn: !!user, login, logout }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
+
+export const useAuth = (): AuthContextType => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
+};
+

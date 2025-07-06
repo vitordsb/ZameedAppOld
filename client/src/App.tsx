@@ -21,6 +21,7 @@ import TestAuth from "@/pages/TestAuth";
 import AdminBootstrap from "@/pages/AdminBootstrap";
 import LandingLayout from "@/components/layouts/LandingLayout";
 import ApplicationLayout from "@/components/layouts/ApplicationLayout";
+import NewsFeed from "@/pages/NewsFeed.tsx";
 import Profile from "@/pages/Profile";
 // Routes that should use the landing page layout
 const LANDING_ROUTES = ["/"];
@@ -34,6 +35,7 @@ function Router() {
       <Route path="/marketplace" component={Marketplace} />
       <Route path="/home/products" component={Products} />
       <Route path="/home/products/create" component={CreateProduct} />
+      <Route path="/home/news" component={NewsFeed} />
       <Route path="/products/:id" component={ProductDetail} />
       <Route path="/designer/:id" component={DesignerProfile} />
       <Route path="/search" component={SearchResults} />

@@ -1,4 +1,7 @@
+
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+
+export const API_BASE_URL = "https://zameed-backend.onrender.com";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -12,11 +15,14 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  const finalUrl = url.startsWith("https")
+    ? url
+    : API_BASE_URL + url;
+
+  const res = await fetch(finalUrl, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
   });
 
   await throwIfResNotOk(res);
@@ -24,13 +30,16 @@ export async function apiRequest(
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
+
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey[0] as string, {
-      credentials: "include",
+    const url = queryKey[0] as string;
+    const finalUrl = url.startsWith("https") ? url : API_BASE_URL + url;
+
+    const res = await fetch(finalUrl, {
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
@@ -55,3 +64,4 @@ export const queryClient = new QueryClient({
     },
   },
 });
+

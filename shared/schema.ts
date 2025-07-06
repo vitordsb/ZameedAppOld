@@ -173,4 +173,3 @@ export const insertProductReviewSchema = createInsertSchema(productReviews).omit
 
 export type InsertProductReview = z.infer<typeof insertProductReviewSchema>;
 export type ProductReview = typeof productReviews.$inferSelect;
-
