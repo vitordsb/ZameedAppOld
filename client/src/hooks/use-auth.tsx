@@ -1,9 +1,9 @@
 
 // src/hooks/use-auth.tsx
 import React, { createContext, ReactNode, useContext, useState, useEffect } from "react";
-import { useQuery, useMutation, UseMutationResult } from "@tanstack/react-query";
+import { useMutation, UseMutationResult } from "@tanstack/react-query";
 import { User } from "@shared/schema";
-import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { parseJwt } from "@/lib/utils";
@@ -16,31 +16,34 @@ export interface OldAuthContextType {
   refetchUser: () => Promise<void>;
 }
 
-type LoginData = z.infer<typeof loginSchema>;
 const loginSchema = z.object({
-  email: z.string().min(1, "email is required"),
-  password: z.string().min(1, "Password is required"),
+  email: z.string().min(1, "Necessário o email"),
+  password: z.string().min(1, "Senha é necessária"),
 });
-type RegisterData = z.infer<typeof registerSchema>;
+
 const registerSchema = z.object({
-  name: z.string().min(1, "Nome obrigatório"),
-  email: z.string().email("Email inválido"),
-  password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
-  confirmPassword: z.string().min(6, "Confirme sua senha"),
-  cpf: z.string().min(11, "CPF inválido"),
-  type: z.enum(["contratante", "prestador"]),
-  termos_aceitos: z.boolean().refine((val) => val === true, {
-    message: "É preciso aceitar os termos",
-  }),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "As senhas não coincidem",
-  path: ["confirmPassword"],
-});
+    name: z.string().min(1, "Nome obrigatório"),
+    email: z.string().email("Email inválido"),
+    password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
+    confirmPassword: z.string().min(6, "Confirme sua senha"),
+    cpf: z.string().min(11, "CPF inválido"),
+    type: z.enum(["contratante", "prestador"]),
+    termos_aceitos: z.boolean().refine((val) => val === true, {
+      message: "É preciso aceitar os termos",
+    }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "As senhas não coincidem",
+    path: ["confirmPassword"],
+  });
+
+type LoginData = z.infer<typeof loginSchema>;
+type RegisterData = z.infer<typeof registerSchema>;
 type RegisterPayload = Omit<RegisterData, "confirmPassword">;
 
 export type AuthContextType = OldAuthContextType & {
   error: Error | null;
-  loginMutation: UseMutationResult<User, Error, LoginData>;
+  loginMutation: UseMutationResult<void, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<User, Error, RegisterPayload>;
   isGuest: boolean;
@@ -55,66 +58,123 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
 
+  // 1) Restaura sessão ao montar
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      const payload = parseJwt<{ user: User }>(token);
-      setUser(payload?.user ?? null);
+    const token = sessionStorage.getItem("token");
+    const expiry = sessionStorage.getItem("tokenExpiry");
+    console.log("🔄 restoring session, token:", token, "expiry:", expiry);
+
+    if (token && expiry && Number(expiry) > Date.now()) {
+      // decodifica direto no formato User
+      const payload = parseJwt<User>(token);
+      if (payload?.id) {
+        console.log("✔ session válida, user:", payload);
+        setUser(payload);
+      } else {
+        console.log("❌ token inválido, limpando sessão");
+        sessionStorage.removeItem("token");
+        sessionStorage.removeItem("tokenExpiry");
+        setUser(null);
+      }
     } else {
+      console.log("⏳ nenhuma sessão válida encontrada");
+      sessionStorage.removeItem("token");
+      sessionStorage.removeItem("tokenExpiry");
       setUser(null);
     }
+
     setIsLoading(false);
   }, []);
 
-  const loginMutation = useMutation<User, Error, LoginData>({
+  // 2) Login
+  const loginMutation = useMutation<void, Error, LoginData>({
     mutationFn: async (credentials) => {
       loginSchema.parse(credentials);
+      console.log("🔐 calling /auth/login", credentials);
       const res = await apiRequest("POST", "/auth/login", credentials);
-      const data = await res.json();
-      return data as User;
+      const body = (await res.json()) as { data: { token: string } };
+      console.log("← login response:", body);
+      const token = body.data.token;
+
+      // expira em 1h
+      const expiresAt = Date.now() + 1000 * 60 * 60;
+      sessionStorage.setItem("token", token);
+      sessionStorage.setItem("tokenExpiry", expiresAt.toString());
     },
-    onSuccess: (user) => {
-      setUser(user);
+    onSuccess: () => {
+      const token = sessionStorage.getItem("token")!;
+      const payload = parseJwt<User>(token);
+      console.log("→ logged in user:", payload);
+      setUser(payload);
       setIsGuest(false);
-      toast({ title: "Login realizado", description: "Parabéns, você efetuou o login com sucesso!" });
-      queryClient.setQueryData(["/auth/login"], user);
+      toast({
+        title: "Login realizado",
+        description: "Seu acesso expira em 1 hora. Ou permaneça conectado para nunca expirar.",
+      });
+      queryClient.setQueryData(["/auth/login"], payload);
     },
     onError: (error) => {
-      toast({ title: "Login failed", description: error.message, variant: "destructive" });
+      console.error("Login error:", error);
+      toast({
+        title: "Login falhou",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
+  // 3) Registro
   const registerMutation = useMutation<User, Error, RegisterPayload>({
     mutationFn: async (userData) => {
       registerSchema.parse({ ...userData, confirmPassword: userData.password });
       const res = await apiRequest("POST", "/auth/register", userData);
-      const data = await res.json();
-      return data.user as User;
+      const body = await res.json();
+      console.log("← register response:", body);
+      return body.user as User;
     },
-    onSuccess: (user) => {
-      setUser(user);
+    onSuccess: (newUser) => {
+      console.log("✔ registered user:", newUser);
+      setUser(newUser);
       setIsGuest(false);
-      toast({ title: "Registration successful", description: "Your account has been created successfully" });
-      queryClient.setQueryData(["/auth/login"], user);
+      toast({
+        title: "Cadastro realizado",
+        description: "Bem-vindo(a)!",
+      });
+      queryClient.setQueryData(["/auth/login"], newUser);
     },
     onError: (error) => {
-      toast({ title: "Registration failed", description: error.message, variant: "destructive" });
+      console.error("Register error:", error);
+      toast({
+        title: "Cadastro falhou",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
+  // Logout
   const logoutMutation = useMutation<void, Error, void>({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/auth/logout");
+      await apiRequest("POST", "/auth/logout");
     },
     onSuccess: () => {
-      localStorage.removeItem("token");
+      sessionStorage.removeItem("token");
+      sessionStorage.removeItem("tokenExpiry");
       setUser(null);
       setIsGuest(false);
-      toast({ title: "Logged out", description: "You have been successfully logged out" });
+      toast({
+        title: "Desconectado",
+        description: "Até a próxima!",
+      });
       queryClient.setQueryData(["/auth/login"], null);
     },
     onError: (error) => {
-      toast({ title: "Logout failed", description: error.message, variant: "destructive" });
+      console.error("Logout error:", error);
+      toast({
+        title: "Logout falhou",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -123,7 +183,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  // Compatibilidade com OldAuthContextType
   const oldContext: OldAuthContextType = {
     user,
     isLoading,
@@ -152,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error("useAuth deve ser usado dentro de um AuthProvider");
   }
   return context;
 }

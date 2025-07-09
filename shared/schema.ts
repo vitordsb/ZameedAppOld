@@ -1,175 +1,96 @@
 
-import { mysqlTable, varchar, int, boolean, json, datetime, decimal, text } from "drizzle-orm/mysql-core";
+import {
+  mysqlTable,
+  varchar,
+  int,
+  boolean,
+  double,
+  text,
+  datetime,
+} from "drizzle-orm/mysql-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Users
+// ---------- Users ----------
 export const users = mysqlTable("users", {
   id: int("id").primaryKey().autoincrement(),
-  username: varchar("username", { length: 255 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   password: varchar("password", { length: 255 }).notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  profileImage: varchar("profile_image", { length: 255 }),
-  userType: varchar("user_type", { length: 255 }).notNull().default("client"),
-    createdAt: datetime("created_at"),
-  });
-
-  export const insertUserSchema = createInsertSchema(users).omit(["id", "createdAt"]).extend({
-    confirmPassword: z.string(),
-  });
-
-  export const loginUserSchema = z.object({
-    username: z.string().min(3),
-    password: z.string().min(6),
-  });
-
-  export type InsertUser = z.infer<typeof insertUserSchema>;
-  export type User = typeof users.$inferSelect;
-  export type LoginUser = z.infer<typeof loginUserSchema>;
-
-  // Designers
-  export const designers = mysqlTable("designers", {
-    id: int("id").primaryKey().autoincrement(),
-    userId: int("user_id").notNull().unique(),
-    name: varchar("name", { length: 255 }).notNull(),
-    profileImage: varchar("profile_image", { length: 255 }).notNull(),
-    title: varchar("title", { length: 255 }),
-    bio: text("bio"),
-    style: varchar("style", { length: 255 }).notNull(),
-    description: text("description").notNull(),
-    hourlyRate: int("hourly_rate").notNull(),
-    rating: int("rating").notNull(),
-    reviewCount: int("review_count").notNull(),
-    location: varchar("location", { length: 255 }).notNull(),
-    portfolioImages: json("portfolio_images").notNull(),
-    features: json("features").notNull(),
-    socialLinks: json("social_links").notNull(),
-    services: json("services"),
-    createdAt: datetime("created_at"),
-    updatedAt: datetime("updated_at"),
-  });
-
-  export const insertDesignerSchema = createInsertSchema(designers).omit([
-    "id",
-    "createdAt",
-    "updatedAt",
-  ]);
-
-  export const updateDesignerSchema = createInsertSchema(designers).omit([
-    "id",
-    "userId",
-    "createdAt",
-    "updatedAt",
-  ]).partial();
-
-  export type InsertDesigner = z.infer<typeof insertDesignerSchema>;
-  export type UpdateDesigner = z.infer<typeof updateDesignerSchema>;
-  export type Designer = typeof designers.$inferSelect;
-
-  // Posts
-  export const posts = mysqlTable("posts", {
-    id: int("id").primaryKey().autoincrement(),
-    designerId: int("designer_id").notNull(),
-    title: varchar("title", { length: 255 }).notNull(),
-    content: text("content").notNull(),
-    image: varchar("image", { length: 255 }),
-    createdAt: datetime("created_at"),
-    updatedAt: datetime("updated_at"),
-  });
-
-  // Likes
-  export const likes = mysqlTable("likes", {
-    id: int("id").primaryKey().autoincrement(),
-    postId: int("post_id").notNull(),
-    userId: int("user_id").notNull(),
-    createdAt: datetime("created_at"),
-  });
-
-  // Comments
-  export const comments = mysqlTable("comments", {
-    id: int("id").primaryKey().autoincrement(),
-    postId: int("post_id").notNull(),
-    userId: int("user_id").notNull(),
-    content: text("content").notNull(),
-    createdAt: datetime("created_at"),
-    updatedAt: datetime("updated_at"),
-  });
-
-  // Messages
-  export const messages = mysqlTable("messages", {
-    id: int("id").primaryKey().autoincrement(),
-    senderId: int("sender_id").notNull(),
-    receiverId: int("receiver_id").notNull(),
-    content: text("content").notNull(),
-    read: boolean("read").notNull().default(false),
-    createdAt: datetime("created_at"),
-  });
-
-  export const insertMessageSchema = createInsertSchema(messages);
-  export type InsertMessage = z.infer<typeof insertMessageSchema>;
-  export type Message = typeof messages.$inferSelect;
-
-  // Products
-  export const products = mysqlTable("products", {
-    id: int("id").primaryKey().autoincrement(),
-    sellerId: int("seller_id").notNull(),
-    name: varchar("name", { length: 255 }).notNull(),
-    description: text("description").notNull(),
-    price: decimal("price", { precision: 10, scale: 2 }).notNull(),
-    discountPrice: decimal("discount_price", { precision: 10, scale: 2 }),
-    category: varchar("category", { length: 255 }).notNull(),
-    subcategory: varchar("subcategory", { length: 255 }),
-    tags: json("tags"),
-    style: varchar("style", { length: 255 }),
-    material: varchar("material", { length: 255 }),
-    color: varchar("color", { length: 255 }),
-    dimensions: json("dimensions"),
-    weight: decimal("weight", { precision: 6, scale: 2 }),
-    weightUnit: varchar("weight_unit", { length: 255 }),
-    images: json("images").notNull(),
-    inStock: boolean("in_stock").notNull().default(true),
-    stockQuantity: int("stock_quantity"),
-    featured: boolean("featured").notNull().default(false),
-    rating: decimal("rating", { precision: 3, scale: 1 }),
-    reviewCount: int("review_count").notNull().default(0),
-    createdAt: datetime("created_at"),
-    updatedAt: datetime("updated_at"),
-  });
-
-  export const insertProductSchema = createInsertSchema(products).omit([
-    "id",
-    "createdAt",
-    "updatedAt",
-  ]);
-
-  export const updateProductSchema = createInsertSchema(products).omit([
-    "id",
-    "sellerId",
-    "createdAt",
-    "updatedAt",
-  ]).partial();
-
-  export type InsertProduct = z.infer<typeof insertProductSchema>;
-  export type UpdateProduct = z.infer<typeof updateProductSchema>;
-  export type Product = typeof products.$inferSelect;
-
-  // Product Reviews
-  export const productReviews = mysqlTable("product_reviews", {
-    id: int("id").primaryKey().autoincrement(),
-    productId: int("product_id").notNull(),
-    userId: int("user_id").notNull(),
-    rating: int("rating").notNull(),
-    comment: text("comment"),
-    createdAt: datetime("created_at"),
-    updatedAt: datetime("updated_at"),
+  cpf: varchar("cpf", { length: 11 }).notNull(),
+  type: varchar("type", { length: 20 }).notNull().default("contratante"),
+  termos_aceitos: boolean("termos_aceitos").notNull().default(false),
+  is_email_verified: boolean("is_email_verified").notNull().default(false),
+  perfil_completo: boolean("perfil_completo").notNull().default(false),
+  createdAt: datetime("created_at").notNull().defaultNow(),
+  updatedAt: datetime("updated_at").notNull().defaultNow(),
 });
 
-export const insertProductReviewSchema = createInsertSchema(productReviews).omit([
-  "id",
-  "createdAt",
-  "updatedAt",
-]);
+export const insertUserSchema = createInsertSchema(users)
+  .omit({ id: true, createdAt: true, updatedAt: true })
+  .extend({
+    confirmPassword: z.string().min(6),
+    type: z.enum(["contratante", "prestador"]),
+    termos_aceitos: z.boolean(),
+  });
 
-export type InsertProductReview = z.infer<typeof insertProductReviewSchema>;
-export type ProductReview = typeof productReviews.$inferSelect;
+export const loginUserSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+});
+
+// ---------- Service Providers ----------
+export const providers = mysqlTable("providers", {
+  providerId: int("provider_id").primaryKey().autoincrement(),
+  userId: int("user_id").notNull().references(() => users.id),
+  profession: varchar("profession", { length: 255 }).notNull(),
+  views_profile: int("views_profile").notNull().default(0),
+  about: text("about"),
+  rating_mid: double("rating_mid").notNull().default(0),
+  createdAt: datetime("created_at").notNull().defaultNow(),
+  updatedAt: datetime("updated_at").notNull().defaultNow(),
+});
+
+export const insertProviderSchema = createInsertSchema(providers)
+  .omit({ providerId: true, createdAt: true, updatedAt: true });
+
+// ---------- Demands ----------
+export const demands = mysqlTable("demands", {
+  id_demand: int("id_demand").primaryKey().autoincrement(),
+  id_user: int("id_user").notNull().references(() => users.id),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  price: double("price").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pendente"),
+  createdAt: datetime("created_at").notNull().defaultNow(),
+  updatedAt: datetime("updated_at").notNull().defaultNow(),
+});
+
+export const insertDemandSchema = createInsertSchema(demands)
+  .omit({ id_demand: true, createdAt: true, updatedAt: true });
+
+// ---------- Service Freelancer ----------
+export const serviceFreelancers = mysqlTable("service_freelancers", {
+  id_serviceFreelancer: int("id_serviceFreelancer").primaryKey().autoincrement(),
+  id_provider: int("id_provider").notNull().references(() => providers.providerId),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  price: double("price").notNull(),
+  createdAt: datetime("created_at").notNull().defaultNow(),
+  updatedAt: datetime("updated_at").notNull().defaultNow(),
+});
+
+export const insertServiceFreelancerSchema = createInsertSchema(serviceFreelancers)
+  .omit({ id_serviceFreelancer: true, createdAt: true, updatedAt: true });
+
+// ---------- Type Exports ----------
+export type User = typeof users.$inferSelect;
+export type NewUser = z.infer<typeof insertUserSchema>;
+export type LoginUser = z.infer<typeof loginUserSchema>;
+export type ServiceProvider = typeof providers.$inferSelect;
+export type NewServiceProvider = z.infer<typeof insertProviderSchema>;
+export type Demand = typeof demands.$inferSelect;
+export type NewDemand = z.infer<typeof insertDemandSchema>;
+export type ServiceFreelancer = typeof serviceFreelancers.$inferSelect;
+export type NewServiceFreelancer = z.infer<typeof insertServiceFreelancerSchema>;
+

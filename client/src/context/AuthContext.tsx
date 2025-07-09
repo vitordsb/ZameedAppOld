@@ -1,4 +1,3 @@
-// src/contexts/AuthContext.tsx
 import React, {
   createContext,
   useContext,
@@ -20,7 +19,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Decodifica o payload de um JWT sem dependências externas
 function parseJwt<T = any>(token: string): T | null {
   try {
     const base64Url = token.split('.')[1];
@@ -39,7 +37,7 @@ function parseJwt<T = any>(token: string): T | null {
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(
-    () => localStorage.getItem('token')
+    () => sessionStorage.getItem('token')
   );
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,8 +69,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       throw new Error('Credenciais inválidas');
     }
     const { token: jwt } = await res.json();
-    localStorage.setItem('token', jwt);
+    sessionStorage.setItem('token', jwt);
     setToken(jwt);
+    console.log('jwt', jwt);
     const payload = parseJwt<{ user: User }>(jwt);
     setUser(payload?.user ?? null);
     setIsLoading(false);
@@ -83,7 +82,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
     setToken(null);
     setUser(null);
     setIsGuest(false);

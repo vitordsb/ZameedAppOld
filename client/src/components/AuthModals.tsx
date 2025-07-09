@@ -1,4 +1,6 @@
 
+// src/components/AuthModals.tsx
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Loader2 } from "lucide-react";
 import {
@@ -23,21 +25,18 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 
-type LoginForm = {
-  email: string;
-  password: string;
-};
+type LoginForm = { email: string; password: string };
 
 type RegisterForm = {
   name: string;
   email: string;
-  password: string;
-  confirmPassword: string;
   cpf: string;
   type: "contratante" | "prestador";
+  profession?: string;
+  password: string;
+  confirmPassword: string;
   termos_aceitos: boolean;
 };
-
 
 interface AuthModalsProps {
   isLoginOpen: boolean;
@@ -45,100 +44,104 @@ interface AuthModalsProps {
   onLoginClose: () => void;
   onRegisterClose: () => void;
   onAuthSuccess?: () => void;
-  onSwitchToRegister: () => void;
-  onSwitchToLogin: () => void;
 }
 
-export const AuthModals = ({
+export const AuthModals: React.FC<AuthModalsProps> = ({
   isLoginOpen,
   isRegisterOpen,
   onLoginClose,
   onRegisterClose,
   onAuthSuccess,
-  onSwitchToRegister,
-  onSwitchToLogin,
-}: AuthModalsProps) => {
+}) => {
   const { toast } = useToast();
-  const { loginMutation, isLoading } = useAuth();
-  const { registerMutation, isLoading: isRegisterLoading } = useAuth();
-
-  const loginForm = useForm<LoginForm>({
+  const { loginMutation, registerMutation } = useAuth();
+  const [loginLoading, setLoginLoading]         = useState(false);
+  const [registerLoading, setRegisterLoading]   = useState(false);
+  const loginForm = useForm<LoginForm>({ defaultValues: { email: "", password: "" } });
+  const registerForm = useForm<RegisterForm>({
     defaultValues: {
+      name: "",
       email: "",
+      cpf: "",
+      type: "contratante",
+      profession: "",
       password: "",
+      confirmPassword: "",
+      termos_aceitos: false,
     },
   });
 
-const registerForm = useForm<RegisterForm>({
-  defaultValues: {
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    cpf: "",
-    type: "contratante",
-    termos_aceitos: false,
-  },
-});
+  const selectedType = registerForm.watch("type");
 
-const onLoginSubmit = async (data: LoginForm) => {
-  try {
-    await loginMutation.mutateAsync({
-      email: data.email,
-      password: data.password,
-    });
-    console.log("✅ Login efetuado com sucesso!");
-    loginForm.reset();
-    onLoginClose();
-    onAuthSuccess?.();
-  } catch (error) {
-    toast({
-      title: "Erro no login",
-      description:
-        (error as Error).message || "Não foi possível fazer login.",
-      variant: "destructive",
-    });
-  }
-};
+  const handleLogin = async (data: LoginForm) => {
+    setLoginLoading(true);
+    try {
+      await loginMutation.mutateAsync(data);
+      loginForm.reset();
+      onLoginClose();
+      onAuthSuccess?.();
+    } catch (err) {
+      toast({
+        title: "Erro no login",
+        description: (err as Error).message || "Não foi possível logar.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoginLoading(false);
+    }
+  };
 
-const onRegisterSubmit = async (data: RegisterForm) => {
-  try {
-    const { confirmPassword, ...payload } = data;
-    await registerMutation.mutateAsync(payload);
-    console.log("✅ Cadastro efetuado com sucesso!");
-    registerForm.reset();
-    onRegisterClose();
-    onAuthSuccess?.();
-  } catch (error) {
-    toast({
-      title: "Erro no cadastro",
-      description: (error as Error).message || "Erro desconhecido",
-      variant: "destructive",
-    });
-  }
-};
+  const handleRegister = async (data: RegisterForm) => {
+    if (data.password !== data.confirmPassword) {
+      toast({ title: "Erro no cadastro", description: "Senhas não coincidem", variant: "destructive" });
+      return;
+    }
+    if (selectedType === "prestador" && !data.profession?.trim()) {
+      toast({ title: "Erro no cadastro", description: "Informe sua profissão", variant: "destructive" });
+      return;
+    }
+    setRegisterLoading(true);
+    try {
+      const { confirmPassword, ...payload } = data;
+      await registerMutation.mutateAsync(payload as any);
+      registerForm.reset();
+      onRegisterClose();
+      onAuthSuccess?.();
+    } catch (err) {
+      toast({
+        title: "Erro no cadastro",
+        description: (err as Error).message || "Não foi possível cadastrar.",
+        variant: "destructive",
+      });
+    } finally {
+      setRegisterLoading(false);
+    }
+  };
+
+  // Shared field spacing and styling
+  const fieldClasses = "w-full";
 
   return (
     <>
       {/* Login Modal */}
       <Dialog open={isLoginOpen} onOpenChange={onLoginClose}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Login</DialogTitle>
-            <DialogDescription>
-              Acesse sua conta usando e-mail e senha.
+        <DialogContent className="max-w-md w-full p-8 bg-white rounded-lg shadow-xl">
+          <DialogHeader className="text-center mb-4">
+            <DialogTitle className="text-2xl font-bold">Login</DialogTitle>
+            <DialogDescription className="text-sm text-gray-500">
+              Entre com seu e-mail e senha para acessar.
             </DialogDescription>
           </DialogHeader>
           <Form {...loginForm}>
-            <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+            <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-6">
               <FormField
                 control={loginForm.control}
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel className="font-medium">E-mail</FormLabel>
                     <FormControl>
-                      <Input placeholder="email@exemplo.com" {...field} />
+                      <Input className={fieldClasses} placeholder="email@exemplo.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -149,17 +152,21 @@ const onRegisterSubmit = async (data: RegisterForm) => {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Senha</FormLabel>
+                    <FormLabel className="font-medium">Senha</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••" {...field} />
+                      <Input className={fieldClasses} type="password" placeholder="••••••" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <DialogFooter>
-                <Button disabled={isLoading} type="submit">
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <DialogFooter className="pt-4">
+                <Button
+                  type="submit"
+                  disabled={loginLoading}
+                  className="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg"
+                >
+                  {loginLoading && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
                   Entrar
                 </Button>
               </DialogFooter>
@@ -170,125 +177,143 @@ const onRegisterSubmit = async (data: RegisterForm) => {
 
       {/* Register Modal */}
       <Dialog open={isRegisterOpen} onOpenChange={onRegisterClose}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Cadastro</DialogTitle>
-            <DialogDescription>
-              Crie sua conta preenchendo os campos abaixo.
+        <DialogContent className="max-w-lg w-full p-8 bg-white rounded-lg shadow-xl">
+          <DialogHeader className="text-center mb-4">
+            <DialogTitle className="text-2xl font-bold">Cadastro</DialogTitle>
+            <DialogDescription className="text-sm text-gray-500">
+              Preencha os campos abaixo para criar sua conta.
             </DialogDescription>
           </DialogHeader>
           <Form {...registerForm}>
-  <form
-    onSubmit={registerForm.handleSubmit(onRegisterSubmit)}
-    className="space-y-4"
-  >
-    <FormField
-      control={registerForm.control}
-      name="name"
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>Nome</FormLabel>
-          <FormControl>
-            <Input placeholder="Seu nome" {...field} />
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-    <FormField
-      control={registerForm.control}
-      name="email"
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>Email</FormLabel>
-          <FormControl>
-            <Input placeholder="email@exemplo.com" {...field} />
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-    <FormField
-      control={registerForm.control}
-      name="cpf"
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>CPF</FormLabel>
-          <FormControl>
-            <Input placeholder="12345678900" {...field} />
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-    <FormField
-      control={registerForm.control}
-      name="type"
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>Tipo de usuário</FormLabel>
-          <FormControl>
-            <select {...field} className="w-full border rounded p-2">
-              <option value="contratante">Contratante</option>
-              <option value="prestador">Prestador</option>
-            </select>
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-    <FormField
-      control={registerForm.control}
-      name="password"
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>Senha</FormLabel>
-          <FormControl>
-            <Input type="password" placeholder="••••••" {...field} />
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-    <FormField
-      control={registerForm.control}
-      name="confirmPassword"
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>Confirme a Senha</FormLabel>
-          <FormControl>
-            <Input type="password" placeholder="••••••" {...field} />
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-    <FormField
-      control={registerForm.control}
-      name="termos_aceitos"
-      render={({ field }) => (
-        <FormItem>
-          <FormControl>
-            <Checkbox
-              checked={field.value}
-              onCheckedChange={field.onChange}
-            />
-          </FormControl>
-          <FormLabel>Aceito os termos e condições.</FormLabel>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-    <DialogFooter>
-      <Button disabled={isLoading} type="submit">
-        {isLoading && (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        )}
-        Cadastrar
-      </Button>
-    </DialogFooter>
-  </form>
-</Form>        </DialogContent>
+            <form onSubmit={registerForm.handleSubmit(handleRegister)} className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={registerForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-medium">Nome Completo</FormLabel>
+                      <FormControl>
+                        <Input className={fieldClasses} placeholder="Seu nome" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={registerForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-medium">E-mail</FormLabel>
+                      <FormControl>
+                        <Input className={fieldClasses} placeholder="email@exemplo.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={registerForm.control}
+                  name="cpf"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-medium">CPF</FormLabel>
+                      <FormControl>
+                        <Input className={fieldClasses} placeholder="12345678900" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={registerForm.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-medium">Tipo de Conta</FormLabel>
+                      <FormControl>
+                        <select className="w-full border rounded-lg p-2" {...field}>
+                          <option value="contratante">Contratante</option>
+                          <option value="prestador">Prestador</option>
+                        </select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              {selectedType === "prestador" && (
+                <FormField
+                  control={registerForm.control}
+                  name="profession"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-medium">Profissão</FormLabel>
+                      <FormControl>
+                        <Input className={fieldClasses} placeholder="Sua profissão" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={registerForm.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-medium">Senha</FormLabel>
+                      <FormControl>
+                        <Input className={fieldClasses} type="password" placeholder="••••••" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={registerForm.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-medium">Confirmar Senha</FormLabel>
+                      <FormControl>
+                        <Input className={fieldClasses} type="password" placeholder="••••••" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={registerForm.control}
+                name="termos_aceitos"
+                render={({ field }) => (
+                  <FormItem className="flex items-center space-x-2">
+                    <FormControl>
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                    <FormLabel className="text-sm">Li e aceito os termos de uso.</FormLabel>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter className="pt-4">
+                <Button
+                  type="submit"
+                  disabled={registerLoading}
+                  className="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg"
+                >
+                  {registerLoading && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
+                  Cadastrar
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
       </Dialog>
     </>
   );

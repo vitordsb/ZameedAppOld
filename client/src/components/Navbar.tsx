@@ -58,7 +58,7 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     await logout();
-    navigate("/");
+    navigate("/auth");
   };
 
   const isHomePage = location === "/";

@@ -3,13 +3,6 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 export const API_BASE_URL = "https://zameed-backend.onrender.com";
 
-async function throwIfResNotOk(res: Response) {
-  if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
-  }
-}
-
 export async function apiRequest(
   method: string,
   url: string,
@@ -25,7 +18,6 @@ export async function apiRequest(
     body: data ? JSON.stringify(data) : undefined,
   });
 
-  await throwIfResNotOk(res);
   return res;
 }
 
@@ -46,7 +38,6 @@ export const getQueryFn: <T>(options: {
       return null;
     }
 
-    await throwIfResNotOk(res);
     return await res.json();
   };
 

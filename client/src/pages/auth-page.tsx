@@ -5,9 +5,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 
 export default function AuthPage() {
-  const [isLoginOpen, setIsLoginOpen] = useState(false);
-  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
-  
+  const [isLoginOpen, setIsLoginOpen] = useState<boolean>(false);
+  const [isRegisterOpen, setIsRegisterOpen] = useState<boolean>(false);
   const { isLoggedIn, isGuest, loginAsGuest } = useAuth();
   const [location, navigate] = useLocation();
   
@@ -27,7 +26,7 @@ export default function AuthPage() {
   };
 
   const handleAuthSuccess = () => {
-    navigate("/");
+    navigate("/home");
   };
 
   const handleGuest = () => {
@@ -66,7 +65,7 @@ export default function AuthPage() {
                 variant="link" 
                 onClick={handleGuest}
               >
-              Quero testar sem conta!
+             Quero apenas experimentar!
               </Button>
             </div>
           </div>
