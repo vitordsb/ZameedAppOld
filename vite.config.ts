@@ -29,7 +29,7 @@ export default defineConfig({
       "@shared": path.resolve(__dirname, "shared"),
     },
   },
-  root: path.resolve(__dirname, "src"),
+  root: path.resolve(__dirname, "."),
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
